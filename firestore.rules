@@ -65,7 +65,7 @@ service cloud.firestore {
 
     // Match users collection
     match /users/{userId} {
-      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow get: if isSignedIn();
       allow list: if isSignedIn(); // Leaderboard traversal
       
       allow create: if isSignedIn() && request.auth.uid == userId &&
@@ -81,7 +81,7 @@ service cloud.firestore {
                       incoming().uid == existing().uid &&
                       incoming().email == existing().email &&
                       (!('createdAt' in existing()) || incoming().createdAt == existing().createdAt) &&
-                      incoming().updatedAt == request.time &&
+                      incoming().updatedAt is timestamp &&
                       incoming().diff(existing()).affectedKeys().hasOnly([
                         'score', 'level', 'rpLevel', 'money', 'displayName', 'photoURL',
                         'selectedFrameId', 'selectedSkinId', 'ownedFrames', 'ownedSkins',
