@@ -1,0 +1,65 @@
+{
+  "entities": {
+    "Frame": {
+      "title": "Frame",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "cost": { "type": "number" },
+        "image": { "type": "string" },
+        "isGif": { "type": "boolean" }
+      }
+    },
+    "Skin": {
+      "title": "Skin",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "cost": { "type": "number" },
+        "image": { "type": "string" },
+        "icon": { "type": "string" }
+      }
+    },
+    "User": {
+      "title": "User",
+      "description": "Represents a user in the PUBG Tapper game.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "score": { "type": "number" },
+        "selectedFrameId": { "type": "string" },
+        "selectedSkinId": { "type": "string" },
+        "ownedFrames": { "type": "array", "items": { "type": "string" } },
+        "ownedSkins": { "type": "array", "items": { "type": "string" } },
+        "level": { "type": "number" },
+        "rpLevel": { "type": "number" },
+        "money": { "type": "number" },
+        "claimedLevelRewards": { "type": "array", "items": { "type": "number" } },
+        "activeMultiplier": { "type": "number" },
+        "multiplierExpiry": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "score"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile and game progress."
+    },
+    "/frames/{frameId}": {
+      "schema": "Frame",
+      "description": "Available avatar frames."
+    },
+    "/skins/{skinId}": {
+      "schema": "Skin",
+      "description": "Available tapper skins."
+    }
+  }
+}

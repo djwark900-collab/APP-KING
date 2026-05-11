@@ -1,0 +1,127 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // User Model Validation
+    function isValidUser(data) {
+      return data.uid is string &&
+             data.email is string &&
+             (!('score' in data) || data.score is number) &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 256)) &&
+             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1048576)) &&
+             (!('selectedFrameId' in data) || (data.selectedFrameId is string && data.selectedFrameId.size() <= 128)) &&
+             (!('selectedSkinId' in data) || (data.selectedSkinId is string && data.selectedSkinId.size() <= 128)) &&
+             (!('ownedFrames' in data) || data.ownedFrames is list) &&
+             (!('ownedSkins' in data) || data.ownedSkins is list) &&
+             (!('level' in data) || data.level is number) &&
+             (!('rpLevel' in data) || data.rpLevel is number) &&
+             (!('money' in data) || data.money is number) &&
+             (!('claimedLevelRewards' in data) || data.claimedLevelRewards is list) &&
+             (!('claimedRpRewards' in data) || data.claimedRpRewards is list) &&
+             (!('activeMultiplier' in data) || data.activeMultiplier is number) &&
+             (!('multiplierExpiry' in data) || data.multiplierExpiry is timestamp) &&
+             (!('createdAt' in data) || data.createdAt is timestamp) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidAsset(data) {
+       return data.keys().hasAll(['id', 'name', 'cost', 'image']) &&
+              data.id is string &&
+              data.name is string &&
+              data.cost is number &&
+              data.image is string && data.image.size() <= 1048576;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && 
+             request.auth.token.email_verified == true && 
+             (request.auth.token.email == 'traleague@gmail.com' || exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    // Match users collection
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn(); // Allow listing all users (client filters by score for leaderboard)
+      
+      allow create: if isOwner(userId) && 
+                      isValidUser(incoming()) &&
+                      incoming().uid == userId &&
+                      incoming().score == 0 &&
+                      incoming().createdAt == request.time &&
+                      incoming().updatedAt == request.time;
+
+      allow update: if isOwner(userId) && 
+                      isValidUser(incoming()) &&
+                      incoming().uid == existing().uid &&
+                      incoming().email == existing().email &&
+                      (!('createdAt' in existing()) || incoming().createdAt == existing().createdAt) &&
+                      incoming().updatedAt == request.time &&
+                      incoming().diff(existing()).affectedKeys().hasOnly([
+                        'score', 'level', 'rpLevel', 'money', 'displayName', 'photoURL',
+                        'selectedFrameId', 'selectedSkinId', 'ownedFrames', 'ownedSkins',
+                        'claimedLevelRewards', 'claimedRpRewards', 'activeMultiplier', 
+                        'multiplierExpiry', 'updatedAt'
+                      ]);
+
+      allow delete: if false;
+    }
+
+    // Frames & Skins
+    match /frames/{frameId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidAsset(incoming()); 
+      allow delete: if isAdmin();
+    }
+
+    match /skins/{skinId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidAsset(incoming()); 
+      allow delete: if isAdmin();
+    }
+
+    // Admins collection (read-only for security check)
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Royal Pass Rewards collection
+    match /rp_rewards/{rewardId} {
+      allow read: if true;
+      allow write: if isAdmin();
+      
+      function isValidReward(data) {
+        return data.level is number &&
+               data.name is string &&
+               data.type is string &&
+               (!('image' in data) || (data.image is string && data.image.size() <= 1048576)) &&
+               (!('color' in data) || (data.color is string && data.color.size() <= 7));
+      }
+    }
+  }
+}

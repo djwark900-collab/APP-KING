@@ -1,0 +1,203 @@
+import React, { useState } from 'react';
+import { auth } from '../lib/firebase';
+import { signOut } from 'firebase/auth';
+import { ICONS, THEME } from '../constants';
+import { AdminDashboard } from './AdminDashboard';
+import { motion } from 'motion/react';
+
+export const Settings: React.FC = () => {
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [adminPass, setAdminPass] = useState('');
+  const [showAdminInput, setShowAdminInput] = useState(false);
+  
+  // Game Settings State
+  const [settings, setSettings] = useState({
+    masterVolume: 80,
+    musicEnabled: true,
+    sfxEnabled: true,
+    notifications: true,
+    hapticFeedback: true,
+    graphicsQuality: 'High'
+  });
+
+  const handleLogout = () => {
+    if (confirm("Are you sure you want to abandon the mission?")) {
+      signOut(auth);
+    }
+  };
+
+  const handleAdminCheck = () => {
+    if (adminPass === 'EMAD8912') {
+      setIsAdminOpen(true);
+      setShowAdminInput(false);
+      setAdminPass('');
+    } else {
+      alert('Wrong frequency. Access denied.');
+    }
+  };
+
+  const toggleSetting = (key: keyof typeof settings) => {
+    setSettings(prev => ({
+      ...prev,
+      [key]: typeof prev[key] === 'boolean' ? !prev[key] : prev[key]
+    }));
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-[#0F0F0F] relative overflow-hidden">
+      {isAdminOpen && <AdminDashboard onClose={() => setIsAdminOpen(false)} />}
+      
+      <div className="p-6 pt-8 pb-4">
+        <h2 className="text-3xl font-black italic tracking-tighter uppercase leading-none mb-1 text-white">SETTINGS</h2>
+        <div className="flex items-center gap-2">
+          <span className="text-[#F2A900] text-[10px] font-black uppercase tracking-[0.25em]">Configuration</span>
+          <div className="h-px flex-1 bg-white/5" />
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-6 pb-24 custom-scrollbar">
+        {/* Audio & Visuals Section */}
+        <div className="mb-8 space-y-4">
+          <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+            <ICONS.Sound className="w-3.5 h-3.5" /> AUDIO & VISUALS
+          </h3>
+          
+          <div className="bg-[#1A1A1A] border border-white/5 rounded-2xl p-4 space-y-6">
+            {/* Master Volume Slider */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-bold text-gray-300 uppercase tracking-tight">Master Volume</span>
+                <span className="text-xs font-black text-[#F2A900]">{settings.masterVolume}%</span>
+              </div>
+              <input 
+                type="range"
+                min="0"
+                max="100"
+                value={settings.masterVolume}
+                onChange={(e) => setSettings({...settings, masterVolume: parseInt(e.target.value)})}
+                className="w-full h-1.5 bg-black rounded-lg appearance-none cursor-pointer accent-[#F2A900]"
+              />
+            </div>
+
+            {/* Toggles */}
+            <div className="grid grid-cols-1 gap-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${settings.musicEnabled ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                    <ICONS.Sound className="w-4 h-4" />
+                  </div>
+                  <span className="text-sm font-bold text-gray-300 uppercase italic tracking-tighter">Combat BGM</span>
+                </div>
+                <button 
+                  onClick={() => toggleSetting('musicEnabled')}
+                  className={`w-12 h-6 rounded-full transition-all relative ${settings.musicEnabled ? 'bg-[#F2A900]' : 'bg-gray-800'}`}
+                >
+                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${settings.musicEnabled ? 'right-1' : 'left-1'}`} />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${settings.hapticFeedback ? 'bg-blue-500/10 text-blue-500' : 'bg-gray-500/10 text-gray-500'}`}>
+                    <ICONS.Zap className="w-4 h-4" />
+                  </div>
+                  <span className="text-sm font-bold text-gray-300 uppercase italic tracking-tighter">Force Feedback</span>
+                </div>
+                <button 
+                  onClick={() => toggleSetting('hapticFeedback')}
+                  className={`w-12 h-6 rounded-full transition-all relative ${settings.hapticFeedback ? 'bg-[#F2A900]' : 'bg-gray-800'}`}
+                >
+                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${settings.hapticFeedback ? 'right-1' : 'left-1'}`} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Account & Security Section */}
+        <div className="mb-8 space-y-4">
+          <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+            <ICONS.Security className="w-3.5 h-3.5" /> ACCOUNT & SECURITY
+          </h3>
+          
+          <div className="grid grid-cols-1 gap-3">
+             <button 
+              onClick={() => toggleSetting('notifications')}
+              className="flex items-center justify-between p-4 bg-[#1A1A1A] border border-white/5 rounded-2xl group active:scale-[0.98] transition-all"
+            >
+              <div className="flex items-center gap-4 text-left">
+                <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center border border-white/5 group-hover:bg-[#F2A900]/10 group-hover:text-[#F2A900] transition-colors">
+                  <ICONS.Notification className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="font-bold uppercase text-xs text-white">Deploy Notifications</div>
+                  <div className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Missions & Rewards</div>
+                </div>
+              </div>
+              <div className={`w-2 h-2 rounded-full ${settings.notifications ? 'bg-[#F2A900] shadow-[0_0_8px_rgba(242,169,0,0.5)]' : 'bg-gray-800'}`} />
+            </button>
+
+            <button 
+              onClick={() => setShowAdminInput(!showAdminInput)}
+              className="flex items-center justify-between p-4 bg-black/40 border-2 border-[#F2A900]/20 rounded-2xl group active:scale-[0.98] transition-all hover:border-[#F2A900]/50"
+            >
+              <div className="flex items-center gap-4 text-left">
+                <div className="w-10 h-10 bg-[#F2A900]/10 text-[#F2A900] rounded-xl flex items-center justify-center border border-[#F2A900]/20 group-hover:scale-110 transition-transform">
+                  <ICONS.Star className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="font-bold uppercase text-xs text-[#F2A900]">Admin Protocol</div>
+                  <div className="text-[9px] text-[#F2A900]/50 font-bold uppercase tracking-wider">Restricted Access</div>
+                </div>
+              </div>
+              <ICONS.Lock className="w-4 h-4 text-[#F2A900]/30" />
+            </button>
+
+            {showAdminInput && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="bg-[#1A1A1A] border-2 border-[#F2A900] rounded-2xl p-4 space-y-4 shadow-[0_10px_30px_rgba(0,0,0,0.5)] overflow-hidden"
+              >
+                <h4 className="text-[10px] font-black italic text-[#F2A900] uppercase tracking-widest">AUTHENTICATION REQUIRED</h4>
+                <div className="flex gap-2">
+                  <input 
+                    type="password"
+                    autoFocus
+                    value={adminPass}
+                    onChange={e => setAdminPass(e.target.value)}
+                    placeholder="ACCESS KEY"
+                    className="flex-1 bg-black text-[#F2A900] font-mono text-xs p-3 rounded-xl outline-none border border-white/5 focus:border-[#F2A900]"
+                  />
+                  <button 
+                    onClick={handleAdminCheck}
+                    className="bg-[#F2A900] text-black px-6 rounded-xl font-black text-[10px] uppercase shadow-lg shadow-[#F2A900]/20 active:scale-95 transition-all"
+                  >
+                    DEPLOY
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </div>
+        </div>
+
+        {/* Statistics & Info */}
+        <div className="mb-10 bg-gradient-to-r from-red-600/10 to-transparent border-l-4 border-red-600 p-6 rounded-r-2xl">
+          <h4 className="text-xs font-black text-white italic uppercase tracking-tighter mb-4">CRITICAL ZONE</h4>
+          <button 
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-3 bg-red-600 text-white font-black py-4 rounded-xl hover:bg-red-700 shadow-xl shadow-red-900/20 transition-all uppercase tracking-tighter italic"
+          >
+            <ICONS.Logout className="w-5 h-5" />
+            Terminate Mission Profile
+          </button>
+        </div>
+
+        <div className="text-center opacity-30 pb-10">
+          <div className="text-[10px] font-black tracking-[0.4em] uppercase mb-1">PUBG TAPPER ENGINE</div>
+          <div className="text-[8px] font-bold uppercase tracking-widest">Build 1.2.9_X64 - STABLE</div>
+        </div>
+      </div>
+    </div>
+  );
+};

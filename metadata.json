@@ -1,0 +1,6 @@
+{
+  "name": "PUBG Tapper",
+  "description": "A PUBG-themed tapping game where you can upgrade your profile, buy frames, and climb the leaderboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
