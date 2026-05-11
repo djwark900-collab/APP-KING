@@ -156,16 +156,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
-  useEffect(() => {
-    if (!user) return;
+    // Periodic Sync & Visibility Change Sync
+    useEffect(() => {
+      if (!user) return;
 
-    // Periodic Sync
-    const syncInterval = setInterval(() => {
-      forceSync();
-    }, 30000); // 30s auto-sync to be very conservative with quota
+      const syncInterval = setInterval(() => {
+        forceSync();
+      }, 15000); // 15s auto-sync
 
-    return () => clearInterval(syncInterval);
-  }, [user, isSyncing, quotaExceeded]);
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'hidden') {
+          forceSync();
+        }
+      };
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      window.addEventListener('beforeunload', forceSync);
+
+      return () => {
+        clearInterval(syncInterval);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        window.removeEventListener('beforeunload', forceSync);
+      };
+    }, [user, isSyncing, quotaExceeded]);
 
   return (
     <AuthContext.Provider value={{ 
