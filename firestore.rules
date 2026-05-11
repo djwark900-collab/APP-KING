@@ -65,10 +65,11 @@ service cloud.firestore {
 
     // Match users collection
     match /users/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn(); // Allow listing all users (client filters by score for leaderboard)
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isSignedIn(); // Leaderboard traversal
       
-      allow create: if isOwner(userId) && 
+      allow create: if isSignedIn() && request.auth.uid == userId &&
+                      isValidId(userId) &&
                       isValidUser(incoming()) &&
                       incoming().uid == userId &&
                       incoming().score == 0 &&
@@ -88,7 +89,7 @@ service cloud.firestore {
                         'multiplierExpiry', 'updatedAt'
                       ]);
 
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
 
     // Frames & Skins
@@ -122,6 +123,12 @@ service cloud.firestore {
                (!('image' in data) || (data.image is string && data.image.size() <= 1048576)) &&
                (!('color' in data) || (data.color is string && data.color.size() <= 7));
       }
+    }
+
+    // App Creator Info
+    match /app_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }

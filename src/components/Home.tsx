@@ -80,6 +80,13 @@ export const Home: React.FC = () => {
 
   const [prevLevel, setPrevLevel] = useState(level);
   const [showLevelUp, setShowLevelUp] = useState(false);
+  const [creator, setCreator] = useState<{name: string, logo: string} | null>(null);
+
+  useEffect(() => {
+    userService.getCreatorInfo().then(info => {
+      if (info) setCreator({ name: info.name || '', logo: info.logo || '' });
+    });
+  }, []);
 
   useEffect(() => {
     if (level > prevLevel) {
@@ -114,6 +121,16 @@ export const Home: React.FC = () => {
 
       {/* Top Bar Stats */}
       <div className="absolute top-20 right-6 flex flex-col items-end gap-3 z-20">
+        {creator && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center gap-2 mb-1 opacity-20 hover:opacity-100 transition-opacity translate-x-2"
+          >
+            <span className="text-[7px] font-black uppercase tracking-[0.3em] text-white">Creator: {creator.name}</span>
+            {creator.logo && <img src={creator.logo} alt="" className="w-4 h-4 rounded object-contain bg-white/10" referrerPolicy="no-referrer" />}
+          </motion.div>
+        )}
         {quotaExceeded && (
           <motion.div 
             initial={{ opacity: 0, x: 20 }}

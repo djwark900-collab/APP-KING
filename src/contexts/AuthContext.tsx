@@ -129,17 +129,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  const isCreatingRef = React.useRef(false);
   useEffect(() => {
-    let isCreating = false;
     if (user) {
       const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (doc) => {
         if (doc.exists()) {
           setProfile(doc.data());
           setLoading(false);
-        } else if (!isCreating) {
-          isCreating = true;
+        } else if (!isCreatingRef.current) {
+          isCreatingRef.current = true;
           // If profile doesn't exist, create it
           userService.createUserProfile(user.uid, user.email || '', user.displayName || 'Survivor')
+            .catch(err => {
+              console.error("Profile creation failed:", err);
+              isCreatingRef.current = false; // Allow retry
+            })
             .finally(() => {
               setLoading(false);
             });

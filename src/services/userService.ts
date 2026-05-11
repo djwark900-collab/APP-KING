@@ -383,5 +383,38 @@ export const userService = {
     } catch (e) {
       console.error("Failed to init RP rewards", e);
     }
+  },
+
+  // App Settings / Creator
+  async getCreatorInfo() {
+    const path = 'app_settings/creator';
+    try {
+      // Try fetching from server if possible, but handle offline gracefully
+      const snap = await getDoc(doc(db, 'app_settings', 'creator'));
+      if (snap.exists()) {
+        return snap.data();
+      }
+      return { 
+        name: 'TRA LEAGUE', 
+        logo: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop' 
+      };
+    } catch (e: any) {
+      console.warn("Creator info fetch failed, using fallback:", e.message);
+      return { 
+        name: 'TRA LEAGUE', 
+        logo: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop' 
+      };
+    }
+  },
+
+  async updateCreatorInfo(data: { name: string, logo: string }) {
+    try {
+      await setDoc(doc(db, 'app_settings', 'creator'), {
+        ...data,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, 'app_settings/creator');
+    }
   }
 };

@@ -18,6 +18,7 @@ export const Profile: React.FC<ProfileProps> = ({ targetUserId }) => {
   const [newName, setNewName] = useState('');
   const [newPhoto, setNewPhoto] = useState('');
   const [status, setStatus] = useState('');
+  const [creator, setCreator] = useState<{name: string, logo: string} | null>(null);
 
   // Determine which profile were viewing
   const isViewingSelf = !targetUserId || targetUserId === currentUser?.uid;
@@ -39,6 +40,12 @@ export const Profile: React.FC<ProfileProps> = ({ targetUserId }) => {
       setNewPhoto(profile.photoURL || '');
     }
   }, [profile, isViewingSelf]);
+
+  useEffect(() => {
+    userService.getCreatorInfo().then(info => {
+      if (info) setCreator({ name: info.name || '', logo: info.logo || '' });
+    });
+  }, []);
 
   if (isLoadingTarget) {
     return (
@@ -399,6 +406,21 @@ export const Profile: React.FC<ProfileProps> = ({ targetUserId }) => {
                 </div>
               </div>
             </div>
+            
+            {creator && (
+              <div className="pt-8 mt-12 border-t border-white/5 flex flex-col items-center opacity-20 hover:opacity-100 transition-opacity pb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-px w-8 bg-[#F2A900]/20" />
+                  <span className="text-[7px] font-black uppercase tracking-[0.4em] text-[#F2A900]">ENGINE ORIGIN</span>
+                  <div className="h-px w-8 bg-[#F2A900]/20" />
+                </div>
+                <div className="flex items-center gap-3">
+                  {creator.logo && <img src={creator.logo} alt="" className="w-6 h-6 rounded-lg object-contain bg-white/5" referrerPolicy="no-referrer" />}
+                  <span className="text-sm font-black italic text-white uppercase tracking-tighter">{creator.name}</span>
+                </div>
+                <div className="text-[6px] font-bold text-gray-700 uppercase tracking-widest mt-2">© 2024 Battle Royale Tap Simulator</div>
+              </div>
+            )}
           </section>
 
         </div>

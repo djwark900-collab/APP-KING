@@ -17,7 +17,8 @@ export const Admin: React.FC = () => {
   const [editingRp, setEditingRp] = useState<any>(null);
   const [editingSkin, setEditingSkin] = useState<any>(null);
   const [rpRewards, setRpRewards] = useState<any[]>([]);
-  const [activeAdminTab, setActiveAdminTab] = useState<'frames' | 'rp' | 'skins'>('frames');
+  const [activeAdminTab, setActiveAdminTab] = useState<'frames' | 'rp' | 'skins' | 'creator'>('frames');
+  const [creatorInfo, setCreatorInfo] = useState({ name: '', logo: '' });
   const [formState, setFormState] = useState({ 
     id: '', 
     name: '', 
@@ -44,8 +45,27 @@ export const Admin: React.FC = () => {
       setRpRewards(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any));
     });
 
+    const fetchCreator = async () => {
+      const info = await userService.getCreatorInfo();
+      if (info) setCreatorInfo({ name: info.name || '', logo: info.logo || '' });
+    };
+    fetchCreator();
+
     return () => unsubR();
   }, [isAdmin]);
+
+  const handleSaveCreator = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await userService.updateCreatorInfo(creatorInfo);
+      alert("Creator credentials updated successfully.");
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -184,6 +204,14 @@ export const Admin: React.FC = () => {
         >
           Combat Skins
         </button>
+        <button 
+          onClick={() => setActiveAdminTab('creator')}
+          className={`pb-2 px-4 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${
+            activeAdminTab === 'creator' ? 'border-[#F2A900] text-[#F2A900]' : 'border-transparent text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          Creator
+        </button>
       </div>
 
       <section className="bg-[#1A1A1A] border border-white/5 rounded-2xl p-6 mb-8">
@@ -191,10 +219,14 @@ export const Admin: React.FC = () => {
           <div>
             <h3 className="text-sm font-black text-[#F2A900] uppercase tracking-[0.2em] flex items-center gap-2">
               <ICONS.Profile className="w-4 h-4" /> 
-              {activeAdminTab === 'frames' ? 'ASSET MANAGEMENT: FRAMES' : activeAdminTab === 'rp' ? 'CAMPAIGN MANAGEMENT: RP' : 'ASSET MANAGEMENT: SKINS'}
+              {activeAdminTab === 'frames' ? 'ASSET MANAGEMENT: FRAMES' : 
+               activeAdminTab === 'rp' ? 'CAMPAIGN MANAGEMENT: RP' : 
+               activeAdminTab === 'skins' ? 'ASSET MANAGEMENT: SKINS' : 'IDENTITY MANAGEMENT: CREATOR'}
             </h3>
             <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">
-              {activeAdminTab === 'frames' ? 'Deploy new cosmetics to the field' : activeAdminTab === 'rp' ? 'Configure season rewards and progression' : 'Deploy new combat gear skins'}
+              {activeAdminTab === 'frames' ? 'Deploy new cosmetics to the field' : 
+               activeAdminTab === 'rp' ? 'Configure season rewards and progression' : 
+               activeAdminTab === 'skins' ? 'Deploy new combat gear skins' : 'Manage application creator branding'}
             </p>
           </div>
           {(activeAdminTab === 'frames' || activeAdminTab === 'skins') && (
@@ -211,7 +243,70 @@ export const Admin: React.FC = () => {
         </div>
 
         <div className="space-y-3">
-          {activeAdminTab === 'frames' || activeAdminTab === 'skins' ? (activeAdminTab === 'frames' ? frames : skins).map(item => (
+          {activeAdminTab === 'creator' ? (
+            <div className="bg-black/60 border border-white/5 p-6 rounded-xl">
+              <form onSubmit={handleSaveCreator} className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Creator Name</label>
+                    <input 
+                      type="text"
+                      value={creatorInfo.name}
+                      onChange={e => setCreatorInfo({...creatorInfo, name: e.target.value})}
+                      placeholder="e.g. TRA LEAGUE"
+                      className="w-full bg-black border border-white/5 rounded-xl p-3 text-white font-black italic outline-none focus:border-[#F2A900]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Creator Logo (GIF/Image)</label>
+                    <div className="flex gap-4">
+                       <input 
+                        type="file" 
+                        id="creator-logo"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => setCreatorInfo({...creatorInfo, logo: reader.result as string});
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                      <label 
+                        htmlFor="creator-logo"
+                        className="flex-1 h-12 bg-black border border-white/5 rounded-xl text-gray-500 text-[10px] font-black uppercase flex items-center justify-center cursor-pointer hover:border-[#F2A900] transition-all"
+                      >
+                        {creatorInfo.logo ? "Update Logo" : "Upload Logo"}
+                      </label>
+                      {creatorInfo.logo && (
+                        <div className="w-12 h-12 rounded-xl bg-black border border-white/10 overflow-hidden flex items-center justify-center">
+                          <img src={creatorInfo.logo} className="w-full h-full object-contain" alt="" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                   <input 
+                      type="text"
+                      value={creatorInfo.logo}
+                      onChange={e => setCreatorInfo({...creatorInfo, logo: e.target.value})}
+                      placeholder="Or paste Logo URL (https://...)"
+                      className="flex-1 bg-black border border-white/5 rounded-xl p-2 text-[10px] text-gray-500 outline-none focus:border-[#F2A900]"
+                    />
+                    <button 
+                      type="submit"
+                      disabled={loading}
+                      className="bg-[#F2A900] text-black px-8 py-3 rounded-xl font-black text-[10px] uppercase shadow-lg shadow-[#F2A900]/20 active:scale-95 transition-all"
+                    >
+                      {loading ? "Syncing..." : "Update Creator Identity"}
+                    </button>
+                </div>
+              </form>
+            </div>
+          ) : activeAdminTab === 'frames' || activeAdminTab === 'skins' ? (activeAdminTab === 'frames' ? frames : skins).map(item => (
             <motion.div 
               key={item.id}
               initial={{ opacity: 0, y: 10 }}
