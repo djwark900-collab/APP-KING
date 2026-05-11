@@ -4,6 +4,7 @@ import {
   collection, 
   doc, 
   getDoc, 
+  getDocs,
   setDoc, 
   updateDoc, 
   deleteDoc,
@@ -52,6 +53,46 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 }
 
 export const userService = {
+  async getFrames() {
+    try {
+      const snap = await getDocs(collection(db, 'frames'));
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (e: any) {
+      handleFirestoreError(e, OperationType.LIST, 'frames');
+      return [];
+    }
+  },
+
+  async getSkins() {
+    try {
+      const snap = await getDocs(collection(db, 'skins'));
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (e: any) {
+      handleFirestoreError(e, OperationType.LIST, 'skins');
+      return [];
+    }
+  },
+
+  async getLeaderboard(limitCount: number = 20) {
+    try {
+      const q = query(collection(db, 'users'), orderBy('score', 'desc'), limit(limitCount));
+      const snap = await getDocs(q);
+      return snap.docs.map(doc => ({ 
+        id: doc.id,
+        uid: doc.id, 
+        displayName: doc.data().displayName, 
+        score: doc.data().score,
+        level: doc.data().level,
+        photoURL: doc.data().photoURL,
+        selectedFrameId: doc.data().selectedFrameId,
+        selectedSkinId: doc.data().selectedSkinId
+      }));
+    } catch (e: any) {
+      handleFirestoreError(e, OperationType.LIST, 'users');
+      return [];
+    }
+  },
+
   async createUserProfile(userId: string, email: string, displayName: string) {
     const path = `users/${userId}`;
     try {
@@ -63,12 +104,15 @@ export const userService = {
         money: 0,
         level: 1,
         rpLevel: 1,
-        selectedFrameId: 'none',
-        selectedSkinId: 'default',
+        photoURL: auth.currentUser?.photoURL || '',
         ownedFrames: ['none'],
         ownedSkins: ['default'],
+        selectedFrameId: 'none',
+        selectedSkinId: 'default',
         claimedLevelRewards: [],
         claimedRpRewards: [],
+        activeMultiplier: 1,
+        multiplierExpiry: serverTimestamp(),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -87,49 +131,23 @@ export const userService = {
     }
   },
 
-  async addBulkScore(userId: string, amount: number) {
+  async addBulkScore(userId: string, currentScore: number, amount: number) {
     if (amount <= 0) return;
     const path = `users/${userId}`;
     try {
-      const snap = await getDoc(doc(db, 'users', userId));
-      if (!snap.exists()) return;
-      
-      const data = snap.data();
-      const newScore = (data.score || 0) + amount;
+      const newScore = currentScore + amount;
       const level = calculateLevel(newScore);
       const rp = calculateRoyalPass(newScore);
 
       const updateData: any = {
-        score: newScore,
+        score: increment(amount),
         level: level,
         rpLevel: rp.level,
         updatedAt: serverTimestamp(),
       };
-
-      // Check for level rewards
-      const claimed = data.claimedLevelRewards || [];
-      let totalReward = 0;
-      const newlyClaimed: number[] = [];
-
-      Object.entries(LEVEL_REWARDS).forEach(([lvlStr, reward]) => {
-        const lvl = parseInt(lvlStr);
-        if (level >= lvl && !claimed.includes(lvl)) {
-          totalReward += reward;
-          newlyClaimed.push(lvl);
-        }
-      });
-
-      if (totalReward > 0) {
-        updateData.money = increment(totalReward);
-        updateData.claimedLevelRewards = arrayUnion(...newlyClaimed);
-      }
-
+      
       await updateDoc(doc(db, 'users', userId), updateData);
     } catch (e: any) {
-      if (e.message && e.message.includes('Quota limit exceeded')) {
-        console.error("Firestore Daily Quota Reached. Progress will be local-only until reset.");
-        throw new Error("QUOTA_EXCEEDED");
-      }
       handleFirestoreError(e, OperationType.UPDATE, path);
     }
   },
@@ -142,41 +160,29 @@ export const userService = {
   async buyMultiplier(userId: string, multiplier: number, durationMinutes: number, goldCost: number) {
     const path = `users/${userId}`;
     try {
-      const snap = await getDoc(doc(db, 'users', userId));
-      if (!snap.exists()) return;
-      const data = snap.data();
-      
-      if ((data.money || 0) < goldCost) {
-        throw new Error("Insufficient Gold! Exchange Chicken Dinners for Gold in the Shop.");
-      }
-
+      const { Timestamp } = await import('firebase/firestore');
       const expiry = new Date();
       expiry.setMinutes(expiry.getMinutes() + durationMinutes);
       
       await updateDoc(doc(db, 'users', userId), {
         money: increment(-goldCost),
         activeMultiplier: multiplier,
-        multiplierExpiry: expiry,
+        multiplierExpiry: Timestamp.fromDate(expiry),
         updatedAt: serverTimestamp(),
       });
     } catch (e: any) {
-      if (e.message && e.message.includes("Insufficient")) throw e;
       handleFirestoreError(e, OperationType.UPDATE, path);
     }
   },
 
-  async exchangeDinnersToMoney(userId: string, dinnerCost: number, moneyGain: number) {
+  async exchangeDinnersToMoney(userId: string, currentScore: number, dinnerCost: number, moneyGain: number) {
     const path = `users/${userId}`;
     try {
-      const snap = await getDoc(doc(db, 'users', userId));
-      if (!snap.exists()) return;
-      const data = snap.data();
-      
-      if ((data.score || 0) < dinnerCost) {
-        throw new Error("Insufficient Chicken Dinners! Keep tapping to earn more.");
+      if (currentScore < dinnerCost) {
+        throw new Error("Insufficient Chicken Dinners!");
       }
 
-      const newScore = data.score - dinnerCost;
+      const newScore = currentScore - dinnerCost;
       const level = calculateLevel(newScore);
       const rp = calculateRoyalPass(newScore);
 
@@ -188,9 +194,7 @@ export const userService = {
         updatedAt: serverTimestamp(),
       });
     } catch (e: any) {
-      if (e.message && e.message.includes("Insufficient")) {
-         throw e; // Pass through validation errors
-      }
+      if (e.message.includes("Insufficient")) throw e;
       handleFirestoreError(e, OperationType.UPDATE, path);
     }
   },
@@ -198,34 +202,22 @@ export const userService = {
   async purchaseItem(userId: string, itemId: string, itemType: 'frame' | 'skin', goldCost: number) {
     const path = `users/${userId}`;
     try {
-      const snap = await getDoc(doc(db, 'users', userId));
-      if (!snap.exists()) return;
-      const data = snap.data();
-      
-      if ((data.money || 0) < goldCost) {
-        throw new Error('Insufficient Gold!');
-      }
-      
+      const { arrayUnion } = await import('firebase/firestore');
       const updateObj: any = {
         money: increment(-goldCost),
         updatedAt: serverTimestamp(),
       };
 
       if (itemType === 'frame') {
-        const owned = data.ownedFrames || ['none'];
-        if (owned.includes(itemId)) throw new Error("Already owned");
-        updateObj.ownedFrames = [...owned, itemId];
+        updateObj.ownedFrames = arrayUnion(itemId);
         updateObj.selectedFrameId = itemId;
       } else {
-        const owned = data.ownedSkins || ['default'];
-        if (owned.includes(itemId)) throw new Error("Already owned");
-        updateObj.ownedSkins = [...owned, itemId];
+        updateObj.ownedSkins = arrayUnion(itemId);
         updateObj.selectedSkinId = itemId;
       }
 
       await updateDoc(doc(db, 'users', userId), updateObj);
     } catch (e: any) {
-      if (e.message && (e.message.includes("Insufficient") || e.message.includes("owned"))) throw e;
       handleFirestoreError(e, OperationType.UPDATE, path);
     }
   },
@@ -351,11 +343,10 @@ export const userService = {
   // Royal Pass Rewards
   async getRpRewards() {
     try {
-      const { getDocs } = await import('firebase/firestore');
       const q = query(collection(db, 'rp_rewards'), orderBy('level', 'asc'));
       const snap = await getDocs(q);
       return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    } catch (e) {
+    } catch (e: any) {
       handleFirestoreError(e, OperationType.GET, 'rp_rewards');
       return [];
     }

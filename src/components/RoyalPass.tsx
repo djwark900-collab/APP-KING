@@ -3,25 +3,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { ROYAL_PASS_REWARDS, ICONS } from '../constants';
 import { userService } from '../services/userService';
 import { motion } from 'motion/react';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '../lib/firebase';
 
 export const RoyalPass: React.FC = () => {
-  const { profile, user } = useAuth();
-  const [rewards, setRewards] = useState<any[]>([]);
+  const { profile, user, rpRewards } = useAuth();
   
   useEffect(() => {
-    const q = query(collection(db, 'rp_rewards'), orderBy('level', 'asc'));
-    const unsub = onSnapshot(q, (snap) => {
-      if (!snap.empty) {
-        setRewards(snap.docs.map(doc => doc.data()));
-      } else {
-        setRewards(ROYAL_PASS_REWARDS);
-      }
-    });
-
-    return () => unsub();
-  }, []);
+    // We now use rpRewards from context which is cached
+  }, [user]);
 
   // RP points are usually separate, but we use score for now
   // Every 2000 points is 1 RP level as defined in constants.ts
@@ -40,7 +28,7 @@ export const RoyalPass: React.FC = () => {
     }
   };
 
-  const displayRewards = rewards.length > 0 ? rewards : ROYAL_PASS_REWARDS;
+  const displayRewards = rpRewards.length > 0 ? rpRewards : ROYAL_PASS_REWARDS;
 
   return (
     <div className="flex flex-col h-full bg-[#0F0F0F] relative overflow-hidden">

@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../lib/firebase';
-import { collection, query, orderBy, limit, onSnapshot, where, doc, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, where, doc, getDoc, getDocs } from 'firebase/firestore';
 import { ICONS, SHORE_ITEMS, LEVELS } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
+import { userService } from '../services/userService';
 import { motion, AnimatePresence } from 'motion/react';
 import { Profile } from './Profile';
 
@@ -15,24 +16,26 @@ export const Leaderboard: React.FC = () => {
   useEffect(() => {
     if (!user) return;
 
-    // SECURITY: The rule 'allow list' requires a filter on score >= 1 to prevent unauthorized listing of inactive users.
-    const q = query(
-      collection(db, 'users'), 
-      where('score', '>=', 1),
-      orderBy('score', 'desc'), 
-      limit(10)
-    );
-    const unsubUsers = onSnapshot(q, (snap) => {
-      const users = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setTopSurvivors(users);
-      setLoading(false);
-    }, (err) => {
-      console.error("Leaderboard fetch error:", err);
-      setLoading(false);
-    });
-    return () => {
-      unsubUsers();
+    const fetchTopPlayers = async () => {
+      setLoading(true);
+      try {
+        const q = query(
+          collection(db, 'users'), 
+          where('score', '>=', 1),
+          orderBy('score', 'desc'), 
+          limit(20)
+        );
+        const snap = await getDocs(q);
+        const users = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setTopSurvivors(users);
+      } catch (err) {
+        console.warn("Leaderboard fetch error (quota?):", err);
+      } finally {
+        setLoading(false);
+      }
     };
+
+    fetchTopPlayers();
   }, [user]);
 
   const getFrameById = (id: string) => {
@@ -51,29 +54,17 @@ export const Leaderboard: React.FC = () => {
       </div>
 
       <div className="space-y-4 mb-4">
-        {quotaExceeded && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex items-center gap-2 p-3 bg-red-900/20 border border-red-500/30 rounded-xl text-red-500 text-[10px] font-black uppercase"
-          >
-            <ICONS.Alert className="w-4 h-4" /> Save Limit reached. Scores are local-only.
-          </motion.div>
-        )}
-
         {pendingScore > 0 && (
           <motion.button
             onClick={forceSync}
-            disabled={isSyncing || quotaExceeded}
+            disabled={isSyncing}
             className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 font-black uppercase italic tracking-tighter text-xs border-2 shadow-xl transition-all ${
               isSyncing 
                 ? 'bg-gray-800 text-gray-500 border-gray-700' 
-                : quotaExceeded 
-                  ? 'bg-red-900/40 text-red-300 border-red-500/30'
-                  : 'bg-[#F2A900] text-black border-black hover:bg-white'
+                : 'bg-[#F2A900] text-black border-black hover:bg-white'
             }`}
           >
-            {isSyncing ? 'Syncing...' : quotaExceeded ? 'Daily Sync Limit Hit' : `Save ${pendingScore} Dinners To Leaderboard`}
+            {isSyncing ? 'Syncing...' : `Save ${pendingScore} Dinners To Leaderboard`}
           </motion.button>
         )}
 

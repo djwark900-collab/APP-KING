@@ -7,41 +7,32 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 export const Shop: React.FC = () => {
-  const { profile, user, pendingScore, forceSync, isSyncing, quotaExceeded, frames, skins: contextSkins } = useAuth();
-  const [dbSkins, setDbSkins] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { profile, user, pendingScore, forceSync, isSyncing, refreshProfile, frames, skins: contextSkins } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
-
-    const unsubSkins = onSnapshot(collection(db, 'skins'), (snap) => {
-      setDbSkins(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setIsLoading(false);
-    }, (err) => {
-      console.error("Shop skins error:", err);
-      setIsLoading(false);
-    });
-    return () => { unsubSkins(); };
+    if (!user) return;
   }, [user]);
 
   const handlePurchase = async (item: any, type: 'frame' | 'skin') => {
     if (!user) return;
     const ownedList = type === 'frame' ? profile?.ownedFrames : profile?.ownedSkins;
-    const selectedId = type === 'frame' ? profile?.selectedFrameId : profile?.selectedSkinId;
 
     if (ownedList?.includes(item.id)) {
        await userService.selectItem(user.uid, item.id, type);
+       await refreshProfile();
        return;
     }
     
     if (profile?.money >= item.cost) {
       try {
+        setIsLoading(true);
         await userService.purchaseItem(user.uid, item.id, type, item.cost);
+        await refreshProfile();
       } catch (e: any) {
         alert(e.message);
+      } finally {
+        setIsLoading(false);
       }
     } else {
       alert("You need more gold! Complete level milestones to earn rewards.");
@@ -53,9 +44,9 @@ export const Shop: React.FC = () => {
     for (const s of SHORE_ITEMS.skins) await userService.addSkin(s);
   };
 
-  // Merge context/db items with static items
+  // Merge context items with static items
   const allFrames = frames.length > 0 ? frames : SHORE_ITEMS.frames;
-  const allSkins = dbSkins.length > 0 ? dbSkins : contextSkins.length > 0 ? contextSkins : SHORE_ITEMS.skins;
+  const allSkins = contextSkins.length > 0 ? contextSkins : SHORE_ITEMS.skins;
 
   return (
     <div className="p-6 bg-[#0F0F0F] min-h-full">
@@ -72,15 +63,6 @@ export const Shop: React.FC = () => {
               <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Upgrade your gear</p>
             </div>
             <div className="flex flex-col items-end gap-1">
-              {quotaExceeded && (
-                <motion.div 
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="bg-red-500/80 border border-red-400 text-white text-[7px] font-black uppercase px-2 py-1 rounded flex items-center gap-1 backdrop-blur-sm mb-1"
-                >
-                  <ICONS.Alert className="w-3 h-3" /> Daily Limit Hit
-                </motion.div>
-              )}
               <div className="bg-[#F2A900]/10 border border-[#F2A900]/30 rounded-lg px-3 py-1 flex items-center gap-2">
                 <ICONS.Flame className="w-3 h-3 text-[#F2A900]" />
                 <span className="text-[10px] font-black text-white italic">
@@ -106,13 +88,11 @@ export const Shop: React.FC = () => {
             >
               <button
                 onClick={forceSync}
-                disabled={isSyncing || quotaExceeded}
+                disabled={isSyncing}
                 className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 font-black uppercase italic tracking-tighter text-xs border-2 shadow-xl transition-all ${
                   isSyncing 
                     ? 'bg-gray-800 text-gray-500 border-gray-700' 
-                    : quotaExceeded 
-                      ? 'bg-red-900/40 text-red-300 border-red-500/30'
-                      : 'bg-[#F2A900] text-black border-black hover:bg-white hover:-translate-y-1'
+                    : 'bg-[#F2A900] text-black border-black hover:bg-white hover:-translate-y-1'
                 }`}
               >
                 {isSyncing ? (
@@ -121,11 +101,6 @@ export const Shop: React.FC = () => {
                       <ICONS.Alert className="w-4 h-4" />
                     </motion.div>
                     Saving Combat Data...
-                  </>
-                ) : quotaExceeded ? (
-                  <>
-                    <ICONS.Alert className="w-4 h-4" />
-                    Daily Sync Limit Reached
                   </>
                 ) : (
                   <>

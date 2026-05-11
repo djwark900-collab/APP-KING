@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
-import { doc, onSnapshot, collection } from 'firebase/firestore';
+import { doc, onSnapshot, collection, getDocs, getDoc } from 'firebase/firestore';
 import { userService } from '../services/userService';
-import { SHORE_ITEMS } from '../constants';
+import { SHORE_ITEMS, ROYAL_PASS_REWARDS, calculateLevel, calculateRoyalPass } from '../constants';
 
 interface AuthContextType {
   user: User | null;
@@ -11,11 +11,12 @@ interface AuthContextType {
   loading: boolean;
   pendingScore: number;
   isSyncing: boolean;
-  quotaExceeded: boolean;
   addScoreLocal: (amount: number) => void;
   forceSync: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
   frames: any[];
   skins: any[];
+  rpRewards: any[];
 }
 
 const AuthContext = createContext<AuthContextType>({ 
@@ -24,11 +25,12 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   pendingScore: 0,
   isSyncing: false,
-  quotaExceeded: false,
   addScoreLocal: () => {},
   forceSync: async () => {},
+  refreshProfile: async () => {},
   frames: [],
-  skins: []
+  skins: [],
+  rpRewards: []
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -36,12 +38,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<any | null>(null);
   const [frames, setFrames] = useState<any[]>([]);
   const [skins, setSkins] = useState<any[]>([]);
+  const [rpRewards, setRpRewards] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Scoring Buffer State
   const [pendingScore, setPendingScore] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [quotaExceeded, setQuotaExceeded] = useState(false);
   const pendingScoreRef = React.useRef(0);
 
   const lastTapRef = React.useRef<number>(0);
@@ -60,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const forceSync = async () => {
-    if (!user || pendingScoreRef.current <= 0 || isSyncing || quotaExceeded) return;
+    if (!user || !profile || pendingScoreRef.current <= 0 || isSyncing) return;
     
     // Clear the inactivity timeout as we are syncing now
     if (syncTimeoutRef.current) {
@@ -68,91 +70,113 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       syncTimeoutRef.current = null;
     }
     const amountToSync = pendingScoreRef.current;
+    
+    // Optimistic profile update (local)
+    const oldProfile = profile;
+    const newScore = (oldProfile.score || 0) + amountToSync;
+    const rp = calculateRoyalPass(newScore);
+    setProfile({
+      ...oldProfile,
+      score: newScore,
+      level: calculateLevel(newScore),
+      rpLevel: rp.level
+    });
+
     setIsSyncing(true);
     try {
-      await userService.addBulkScore(user.uid, amountToSync);
+      await userService.addBulkScore(user.uid, oldProfile?.score || 0, amountToSync);
       pendingScoreRef.current -= amountToSync;
       setPendingScore(prev => Math.max(0, prev - amountToSync));
     } catch (e: any) {
-      if (e.message === "QUOTA_EXCEEDED") {
-        setQuotaExceeded(true);
-      }
-      console.error("Sync failed:", e.message);
+      console.warn("Sync failed:", e.message);
     } finally {
       setIsSyncing(false);
     }
   };
 
   useEffect(() => {
-    // Fetch custom frames from DB
-    const unsubFrames = onSnapshot(collection(db, 'frames'), (snap) => {
-      const dbFrames = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      // Merge with static frames, filter out duplicates by id
-      const allFrames: any[] = [...SHORE_ITEMS.frames];
-      dbFrames.forEach(df => {
-        if (!allFrames.find(af => af.id === df.id)) {
-          allFrames.push(df);
-        }
-      });
-      setFrames(allFrames);
-    }, (err) => {
-      console.error("Frames fetch error:", err);
-      setFrames(SHORE_ITEMS.frames);
-    });
+    // Fetch static items once on mount instead of using real-time listeners
+    const fetchAssets = async () => {
+      try {
+        const [framesSnap, skinsSnap, rpSnap] = await Promise.all([
+          getDocs(collection(db, 'frames')),
+          getDocs(collection(db, 'skins')),
+          getDocs(collection(db, 'rp_rewards'))
+        ]);
 
-    const unsubSkins = onSnapshot(collection(db, 'skins'), (snap) => {
-      const dbSkins = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      const allSkins: any[] = [...SHORE_ITEMS.skins];
-      dbSkins.forEach(ds => {
-        if (!allSkins.find(as => as.id === ds.id)) {
-          allSkins.push(ds);
-        }
-      });
-      setSkins(allSkins);
-    }, (err) => {
-      console.error("Skins fetch error:", err);
-      setSkins(SHORE_ITEMS.skins);
-    });
+        const dbFrames = framesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const allFrames: any[] = [...SHORE_ITEMS.frames];
+        dbFrames.forEach(df => {
+          if (!allFrames.find(af => af.id === df.id)) allFrames.push(df);
+        });
+        setFrames(allFrames);
 
+        const dbSkins = skinsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const allSkins: any[] = [...SHORE_ITEMS.skins];
+        dbSkins.forEach(ds => {
+          if (!allSkins.find(as => as.id === ds.id)) allSkins.push(ds);
+        });
+        setSkins(allSkins);
+
+        if (!rpSnap.empty) {
+          setRpRewards(rpSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        } else {
+          setRpRewards(ROYAL_PASS_REWARDS);
+        }
+      } catch (err) {
+        console.warn("Assets fetch failed (quota?), using defaults:", err);
+        setFrames(SHORE_ITEMS.frames);
+        setSkins(SHORE_ITEMS.skins);
+        setRpRewards(ROYAL_PASS_REWARDS);
+      }
+    };
+
+    fetchAssets();
+  }, []);
+
+  useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
-      if (!u) {
-        setProfile(null);
-        setLoading(false);
-      }
     });
 
-    return () => {
-      unsubFrames();
-      unsubSkins();
-      unsubscribe();
-    };
+    return unsubscribe;
   }, []);
 
   const isCreatingRef = React.useRef(false);
   useEffect(() => {
     if (user) {
-      const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (doc) => {
-        if (doc.exists()) {
-          setProfile(doc.data());
+      const fetchProfile = async () => {
+        try {
+          const snap = await getDoc(doc(db, 'users', user.uid));
+          if (snap.exists()) {
+            setProfile(snap.data());
+          } else if (!isCreatingRef.current) {
+            isCreatingRef.current = true;
+            try {
+              await userService.createUserProfile(user.uid, user.email || '', user.displayName || 'Survivor');
+              const newSnap = await getDoc(doc(db, 'users', user.uid));
+              if (newSnap.exists()) {
+                setProfile(newSnap.data());
+              }
+            } catch (createErr) {
+              console.error("Profile creation failed:", createErr);
+              isCreatingRef.current = false; // Allow retry on next mount/trigger
+            }
+          }
+        } catch (err: any) {
+          console.warn("Profile fetch failed:", err);
+          if (err.message?.includes("quota")) {
+             // Handle quota exceeded?
+          }
+        } finally {
           setLoading(false);
-        } else if (!isCreatingRef.current) {
-          isCreatingRef.current = true;
-          // If profile doesn't exist, create it
-          userService.createUserProfile(user.uid, user.email || '', user.displayName || 'Survivor')
-            .catch(err => {
-              console.error("Profile creation failed:", err);
-              isCreatingRef.current = false; // Allow retry
-            })
-            .finally(() => {
-              setLoading(false);
-            });
         }
-      }, (err) => {
-        console.error("Profile sync error:", err);
-        setLoading(false);
-      });
-      return unsubscribe;
+      };
+      
+      fetchProfile();
+    } else {
+      setLoading(false);
+      setProfile(null);
     }
   }, [user]);
 
@@ -162,7 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const syncInterval = setInterval(() => {
         forceSync();
-      }, 15000); // 15s auto-sync
+      }, 30000); // 30s auto-sync
 
       const handleVisibilityChange = () => {
         if (document.visibilityState === 'hidden') {
@@ -178,7 +202,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         document.removeEventListener('visibilitychange', handleVisibilityChange);
         window.removeEventListener('beforeunload', forceSync);
       };
-    }, [user, isSyncing, quotaExceeded]);
+    }, [user, isSyncing]);
+
+  const refreshProfile = async () => {
+    if (!user) return;
+    try {
+      const snap = await getDoc(doc(db, 'users', user.uid));
+      if (snap.exists()) {
+        setProfile(snap.data());
+      }
+    } catch (err) {
+      console.warn("Manual profile refresh failed:", err);
+    }
+  };
 
   return (
     <AuthContext.Provider value={{ 
@@ -187,11 +223,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       loading, 
       pendingScore, 
       isSyncing, 
-      quotaExceeded, 
       addScoreLocal, 
       forceSync,
+      refreshProfile,
       frames,
-      skins
+      skins,
+      rpRewards
     }}>
       {!loading && children}
     </AuthContext.Provider>

@@ -5,7 +5,7 @@ import { userService } from '../services/userService';
 import { ICONS, THEME, SHORE_ITEMS, calculateLevel, calculateRoyalPass, LEVELS } from '../constants';
 
 export const Home: React.FC = () => {
-  const { profile, user, pendingScore, isSyncing, quotaExceeded, addScoreLocal, forceSync } = useAuth();
+  const { profile, user, pendingScore, isSyncing, addScoreLocal, forceSync } = useAuth();
   const [taps, setTaps] = useState<{ id: number; x: number; y: number; rotate: number }[]>([]);
   const [particles, setParticles] = useState<{ id: number; x: number; y: number; vx: number; vy: number }[]>([]);
   const [shockwaves, setShockwaves] = useState<{ id: number; x: number; y: number }[]>([]);
@@ -129,15 +129,6 @@ export const Home: React.FC = () => {
           >
             <span className="text-[7px] font-black uppercase tracking-[0.3em] text-white">Creator: {creator.name}</span>
             {creator.logo && <img src={creator.logo} alt="" className="w-4 h-4 rounded object-contain bg-white/10" referrerPolicy="no-referrer" />}
-          </motion.div>
-        )}
-        {quotaExceeded && (
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="bg-red-500/80 border border-red-400 text-white text-[8px] font-black uppercase px-2 py-1 rounded flex items-center gap-1 backdrop-blur-sm"
-          >
-            <ICONS.Alert className="w-3 h-3" /> Offline Mode (Daily Limit)
           </motion.div>
         )}
         <div className="bg-black/60 border border-[#F2A900]/30 rounded-lg p-2 px-3 flex items-center gap-2 backdrop-blur-sm shadow-lg shadow-black/50">
@@ -299,13 +290,11 @@ export const Home: React.FC = () => {
         >
           <button
             onClick={forceSync}
-            disabled={isSyncing || quotaExceeded}
+            disabled={isSyncing}
             className={`flex items-center justify-center gap-2 w-full max-w-sm py-4 rounded-xl font-black uppercase italic tracking-tighter text-sm transition-all shadow-2xl border-2 ${
               isSyncing 
                 ? 'bg-gray-800 text-gray-500 border-gray-700' 
-                : quotaExceeded 
-                  ? 'bg-red-900/40 text-red-300 border-red-500/30'
-                  : 'bg-[#F2A900] text-black border-black hover:bg-white hover:-translate-y-1 active:translate-y-0 active:scale-95'
+                : 'bg-[#F2A900] text-black border-black hover:bg-white hover:-translate-y-1 active:translate-y-0 active:scale-95'
             }`}
           >
             {isSyncing ? (
@@ -314,11 +303,6 @@ export const Home: React.FC = () => {
                   <ICONS.Alert className="w-5 h-5" />
                 </motion.div>
                 Synchronizing Combat Data...
-              </>
-            ) : quotaExceeded ? (
-              <>
-                <ICONS.Alert className="w-5 h-5" />
-                Daily Sync Limit Reached
               </>
             ) : (
               <>
