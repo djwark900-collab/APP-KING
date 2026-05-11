@@ -27,7 +27,20 @@ export const Auth: React.FC = () => {
         await createUserWithEmailAndPassword(auth, email, password);
       }
     } catch (err: any) {
-      setError(err.message);
+      if (err.code === 'auth/email-already-in-use') {
+        setError('This email is already registered. Please login instead.');
+        setIsLogin(true);
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setError('Email/Password sign-in is not enabled in Firebase. Please enable it in the console.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('Password should be at least 6 characters.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Invalid email address format.');
+      } else if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setError('Invalid email or access key.');
+      } else {
+        setError(err.message);
+      }
       setLoading(false);
     }
   };
