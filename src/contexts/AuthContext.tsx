@@ -15,6 +15,7 @@ interface AuthContextType {
   addScoreLocal: (amount: number) => void;
   forceSync: () => Promise<void>;
   frames: any[];
+  skins: any[];
 }
 
 const AuthContext = createContext<AuthContextType>({ 
@@ -26,13 +27,15 @@ const AuthContext = createContext<AuthContextType>({
   quotaExceeded: false,
   addScoreLocal: () => {},
   forceSync: async () => {},
-  frames: []
+  frames: [],
+  skins: []
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
   const [frames, setFrames] = useState<any[]>([]);
+  const [skins, setSkins] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Scoring Buffer State
@@ -97,6 +100,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setFrames(SHORE_ITEMS.frames);
     });
 
+    const unsubSkins = onSnapshot(collection(db, 'skins'), (snap) => {
+      const dbSkins = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const allSkins: any[] = [...SHORE_ITEMS.skins];
+      dbSkins.forEach(ds => {
+        if (!allSkins.find(as => as.id === ds.id)) {
+          allSkins.push(ds);
+        }
+      });
+      setSkins(allSkins);
+    }, (err) => {
+      console.error("Skins fetch error:", err);
+      setSkins(SHORE_ITEMS.skins);
+    });
+
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       if (!u) {
@@ -104,7 +121,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
       }
     });
-    return unsubscribe;
+
+    return () => {
+      unsubFrames();
+      unsubSkins();
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -151,7 +173,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       quotaExceeded, 
       addScoreLocal, 
       forceSync,
-      frames 
+      frames,
+      skins
     }}>
       {!loading && children}
     </AuthContext.Provider>

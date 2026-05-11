@@ -50,11 +50,11 @@ service cloud.firestore {
     }
 
     function isValidAsset(data) {
-       return data.keys().hasAll(['id', 'name', 'cost', 'image']) &&
-              data.id is string &&
+       return data.id is string &&
               data.name is string &&
               data.cost is number &&
-              data.image is string && data.image.size() <= 1048576;
+              (!('image' in data) || (data.image is string && data.image.size() <= 1048576)) &&
+              (!('color' in data) || (data.color is string && data.color.size() <= 7));
     }
 
     function isAdmin() {

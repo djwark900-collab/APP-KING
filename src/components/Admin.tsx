@@ -7,7 +7,7 @@ import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 export const Admin: React.FC = () => {
-  const { profile, frames } = useAuth();
+  const { profile, frames, skins } = useAuth();
   const [loading, setLoading] = useState(false);
 
   // Security check: only allows admin access
@@ -15,8 +15,9 @@ export const Admin: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingFrame, setEditingFrame] = useState<any>(null);
   const [editingRp, setEditingRp] = useState<any>(null);
+  const [editingSkin, setEditingSkin] = useState<any>(null);
   const [rpRewards, setRpRewards] = useState<any[]>([]);
-  const [activeAdminTab, setActiveAdminTab] = useState<'frames' | 'rp'>('frames');
+  const [activeAdminTab, setActiveAdminTab] = useState<'frames' | 'rp' | 'skins'>('frames');
   const [formState, setFormState] = useState({ 
     id: '', 
     name: '', 
@@ -32,6 +33,7 @@ export const Admin: React.FC = () => {
     setFormState({ id: '', name: '', cost: '500', image: '', type: 'money', value: 0, level: 1, color: '#F2A900' });
     setEditingFrame(null);
     setEditingRp(null);
+    setEditingSkin(null);
   };
 
   useEffect(() => {
@@ -65,6 +67,26 @@ export const Admin: React.FC = () => {
           color: formState.color,
           icon: formState.type === 'money' ? 'Zap' : formState.type === 'skin' ? 'Flame' : 'Photo'
         });
+      } else if (activeAdminTab === 'skins') {
+        if (formState.image.length > 900000) {
+          throw new Error("Asset data too large (>900KB).");
+        }
+        if (editingSkin) {
+          await userService.updateSkin(editingSkin.id, {
+            name: formState.name,
+            cost: parseInt(formState.cost),
+            image: formState.image,
+            color: formState.color
+          });
+        } else {
+          await userService.addSkin({
+            id: formState.id,
+            name: formState.name,
+            cost: parseInt(formState.cost),
+            image: formState.image,
+            color: formState.color
+          });
+        }
       } else {
         // Validate string size (Firestore limit is 1MB total per document)
         if (formState.image.length > 900000) {
@@ -75,14 +97,16 @@ export const Admin: React.FC = () => {
           await userService.updateFrame(editingFrame.id, { 
             name: formState.name, 
             cost: parseInt(formState.cost), 
-            image: formState.image 
+            image: formState.image,
+            color: formState.color
           });
         } else {
           await userService.addFrame({ 
             id: formState.id, 
             name: formState.name, 
             cost: parseInt(formState.cost), 
-            image: formState.image 
+            image: formState.image,
+            color: formState.color
           });
         }
       }
@@ -152,6 +176,14 @@ export const Admin: React.FC = () => {
         >
           Royal Pass
         </button>
+        <button 
+          onClick={() => setActiveAdminTab('skins')}
+          className={`pb-2 px-4 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${
+            activeAdminTab === 'skins' ? 'border-[#F2A900] text-[#F2A900]' : 'border-transparent text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          Combat Skins
+        </button>
       </div>
 
       <section className="bg-[#1A1A1A] border border-white/5 rounded-2xl p-6 mb-8">
@@ -159,13 +191,13 @@ export const Admin: React.FC = () => {
           <div>
             <h3 className="text-sm font-black text-[#F2A900] uppercase tracking-[0.2em] flex items-center gap-2">
               <ICONS.Profile className="w-4 h-4" /> 
-              {activeAdminTab === 'frames' ? 'ASSET MANAGEMENT: FRAMES' : 'CAMPAIGN MANAGEMENT: RP'}
+              {activeAdminTab === 'frames' ? 'ASSET MANAGEMENT: FRAMES' : activeAdminTab === 'rp' ? 'CAMPAIGN MANAGEMENT: RP' : 'ASSET MANAGEMENT: SKINS'}
             </h3>
             <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">
-              {activeAdminTab === 'frames' ? 'Deploy new cosmetics to the field' : 'Configure season rewards and progression'}
+              {activeAdminTab === 'frames' ? 'Deploy new cosmetics to the field' : activeAdminTab === 'rp' ? 'Configure season rewards and progression' : 'Deploy new combat gear skins'}
             </p>
           </div>
-          {activeAdminTab === 'frames' && (
+          {(activeAdminTab === 'frames' || activeAdminTab === 'skins') && (
             <button 
               onClick={() => {
                 resetForm();
@@ -179,25 +211,25 @@ export const Admin: React.FC = () => {
         </div>
 
         <div className="space-y-3">
-          {activeAdminTab === 'frames' ? frames.map(frame => (
+          {activeAdminTab === 'frames' || activeAdminTab === 'skins' ? (activeAdminTab === 'frames' ? frames : skins).map(item => (
             <motion.div 
-              key={frame.id}
+              key={item.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className="bg-black/60 border border-white/5 p-4 rounded-xl flex items-center justify-between group hover:border-[#F2A900]/30 transition-colors"
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-[#1A1A1A] rounded-lg border border-white/10 overflow-hidden flex items-center justify-center p-1 relative">
-                  {frame.image ? (
-                    <img src={frame.image} alt={frame.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                  {item.image ? (
+                    <img src={item.image} alt={item.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                   ) : (
                     <ICONS.Profile className="text-gray-700 w-6 h-6" />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
                 </div>
                 <div>
-                  <div className="text-sm font-black text-white italic">{frame.name}</div>
-                  <div className="text-[10px] font-mono text-gray-600 uppercase mt-0.5 tracking-tighter">{frame.id}</div>
+                  <div className="text-sm font-black text-white italic" style={item.color ? { color: item.color } : {}}>{item.name}</div>
+                  <div className="text-[10px] font-mono text-gray-600 uppercase mt-0.5 tracking-tighter">{item.id}</div>
                 </div>
               </div>
 
@@ -205,7 +237,7 @@ export const Admin: React.FC = () => {
                 <div className="text-right">
                   <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Pricing</div>
                   <div className="text-sm font-black text-[#F2A900] flex items-center justify-end gap-1">
-                    {frame.cost} <ICONS.Zap className="w-2.5 h-2.5 text-yellow-500" />
+                    {item.cost} <ICONS.Zap className="w-2.5 h-2.5 text-yellow-500" />
                   </div>
                 </div>
                 
@@ -213,12 +245,14 @@ export const Admin: React.FC = () => {
                   <motion.button 
                     whileTap={{ scale: 0.85 }}
                     onClick={() => {
-                      setEditingFrame(frame);
+                      if (activeAdminTab === 'frames') setEditingFrame(item);
+                      else setEditingSkin(item);
                       setFormState({ 
-                        id: frame.id, 
-                        name: frame.name, 
-                        cost: frame.cost.toString(), 
-                        image: frame.image || '',
+                        id: item.id, 
+                        name: item.name, 
+                        cost: item.cost.toString(), 
+                        image: item.image || '',
+                        color: item.color || '#F2A900',
                         type: 'money',
                         value: 0,
                         level: 1
@@ -232,8 +266,9 @@ export const Admin: React.FC = () => {
                   <motion.button 
                     whileTap={{ scale: 0.85 }}
                     onClick={() => {
-                      if (confirm(`INITIATE TERMINATION: ${frame.id}?\nThis asset will be removed from the database.`)) {
-                        userService.deleteFrame(frame.id);
+                      if (confirm(`INITIATE TERMINATION: ${item.id}?\nThis asset will be removed from the database.`)) {
+                        if (activeAdminTab === 'frames') userService.deleteFrame(item.id);
+                        else userService.deleteSkin(item.id);
                       }
                     }}
                     className="p-3 bg-red-900/20 hover:bg-red-600 hover:text-white text-red-500 rounded-xl transition-all border border-red-500/20"
@@ -310,7 +345,8 @@ export const Admin: React.FC = () => {
               <form onSubmit={handleSave} className="p-6 space-y-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xl font-black italic text-[#F2A900] uppercase skew-x-[-12deg]">
-                    {activeAdminTab === 'rp' ? `EDIT RP TIER ${formState.level}` : (editingFrame ? 'Modifying Asset' : 'New Deployment')}
+                    {activeAdminTab === 'rp' ? `EDIT RP TIER ${formState.level}` : 
+                     (editingFrame || editingSkin) ? 'Modifying Asset' : 'New Deployment'}
                   </h3>
                   <button type="button" onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-white">
                     <ICONS.Alert className="w-6 h-6 rotate-45" />
@@ -435,21 +471,58 @@ export const Admin: React.FC = () => {
                       </div>
                       <div>
                         <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5 flex justify-between">
-                          Asset URL (JPG/PNG/GIF)
+                          Asset Image (GIF/UI)
                           <span className="text-red-500 font-mono lower">max 1MB if using base64</span>
                         </label>
                         <div className="flex gap-2">
                           <input 
-                            value={formState.image}
-                            onChange={e => setFormState({...formState, image: e.target.value})}
-                            placeholder="https://..."
-                            className="flex-1 bg-black border border-[#333] rounded-lg p-3 text-sm outline-none focus:border-[#F2A900]"
+                            type="file" 
+                            id="frame-image"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onloadend = () => setFormState({...formState, image: reader.result as string});
+                                reader.readAsDataURL(file);
+                              }
+                            }}
                           />
+                          <label 
+                            htmlFor="frame-image"
+                            className="flex-1 bg-black border border-white/10 rounded-xl p-3 text-gray-500 text-xs font-bold flex items-center justify-center cursor-pointer hover:border-[#F2A900] transition-colors"
+                          >
+                            {formState.image ? "Change Image" : "Upload Frame Asset"}
+                          </label>
                           {formState.image && (
-                            <div className="w-12 h-12 bg-black rounded border border-white/10 overflow-hidden flex items-center justify-center">
-                              <img src={formState.image} alt="Preview" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                            <div className="w-12 h-12 rounded-xl border border-white/10 overflow-hidden bg-black flex items-center justify-center">
+                              <img src={formState.image} className="w-full h-full object-contain" alt="" referrerPolicy="no-referrer" />
                             </div>
                           )}
+                        </div>
+                        <input 
+                          value={formState.image}
+                          onChange={e => setFormState({...formState, image: e.target.value})}
+                          placeholder="Or paste URL (https://...)"
+                          className="w-full bg-black border border-white/5 rounded-lg p-2 text-[10px] outline-none focus:border-[#F2A900] mt-2 text-gray-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Asset Theme Color</label>
+                        <div className="flex gap-2">
+                          <input 
+                            type="color"
+                            value={formState.color}
+                            onChange={e => setFormState({...formState, color: e.target.value})}
+                            className="w-12 h-12 bg-black border border-white/5 rounded-xl outline-none cursor-pointer"
+                          />
+                          <input 
+                            type="text"
+                            value={formState.color}
+                            onChange={e => setFormState({...formState, color: e.target.value})}
+                            className="flex-1 bg-black border border-white/5 rounded-xl p-3 text-white font-mono text-xs outline-none focus:border-[#F2A900]"
+                          />
                         </div>
                       </div>
                     </>

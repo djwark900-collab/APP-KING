@@ -204,8 +204,10 @@ export const Home: React.FC = () => {
       <motion.button
         onMouseDown={handleTap}
         onTouchStart={handleTap}
-        whileTap={{ scale: 0.85, rotate: -3 }}
-        className="group relative w-64 h-64 rounded-full flex items-center justify-center transition-all bg-transparent border-none active:outline-none focus:outline-none"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.96, y: 4 }}
+        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+        className="group relative w-64 h-64 rounded-full flex items-center justify-center transition-shadow bg-transparent border-none active:outline-none focus:outline-none"
       >
         {/* Glow Effect */}
         <div className="absolute inset-0 bg-[#F2A900] rounded-full opacity-10 blur-3xl group-active:opacity-40 transition-opacity" />

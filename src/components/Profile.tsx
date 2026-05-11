@@ -9,7 +9,7 @@ interface ProfileProps {
 }
 
 export const Profile: React.FC<ProfileProps> = ({ targetUserId }) => {
-  const { profile: myProfile, user: currentUser, pendingScore, forceSync, isSyncing, quotaExceeded, frames } = useAuth();
+  const { profile: myProfile, user: currentUser, pendingScore, forceSync, isSyncing, quotaExceeded, frames, skins } = useAuth();
   const [targetProfile, setTargetProfile] = useState<any | null>(null);
   const [isLoadingTarget, setIsLoadingTarget] = useState(false);
   
@@ -59,7 +59,7 @@ export const Profile: React.FC<ProfileProps> = ({ targetUserId }) => {
   }
   
   const currentFrame = frames.find(f => f.id === profile?.selectedFrameId);
-  const currentSkin = SHORE_ITEMS.skins.find(s => s.id === profile?.selectedSkinId);
+  const currentSkin = skins.find(s => s.id === profile?.selectedSkinId);
 
   const level = profile ? calculateLevel(profile.score) : 1;
   const currentRank = LEVELS.findLast(l => level >= l.min) || LEVELS[0];
@@ -210,6 +210,7 @@ export const Profile: React.FC<ProfileProps> = ({ targetUserId }) => {
                     }
                   }}
                   className="text-3xl font-black italic mb-3 uppercase tracking-tighter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] cursor-pointer hover:text-[#F2A900] transition-colors"
+                  style={{ color: currentSkin?.color || currentFrame?.color || '#FFFFFF' }}
                 >
                   {profile?.displayName || 'Survivor'}
                 </motion.h3>
@@ -361,7 +362,7 @@ export const Profile: React.FC<ProfileProps> = ({ targetUserId }) => {
                     </label>
                     <div className="grid grid-cols-4 gap-4">
                       {profile?.ownedSkins?.map((skinId: string) => {
-                        const skin = SHORE_ITEMS.skins.find(s => s.id === skinId) as any;
+                        const skin = skins.find(s => s.id === skinId);
                         const isSelected = profile.selectedSkinId === skinId;
                         return (
                           <motion.button
@@ -380,7 +381,7 @@ export const Profile: React.FC<ProfileProps> = ({ targetUserId }) => {
                               <div className="flex items-center justify-center">
                                 {(() => {
                                   const SkinIcon = ICONS[skin?.icon as keyof typeof ICONS] || ICONS.Flame;
-                                  return <SkinIcon className={`w-8 h-8 ${isSelected ? 'text-[#F2A900]' : 'text-gray-700'}`} />;
+                                  return <SkinIcon className={`w-8 h-8 ${isSelected ? 'text-[#F2A900]' : 'text-gray-700'}`} style={skin?.color ? { color: skin.color } : {}} />;
                                 })()}
                               </div>
                             )}

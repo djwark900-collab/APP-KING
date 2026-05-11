@@ -319,9 +319,32 @@ export const userService = {
 
   async addSkin(skin: any) {
     try {
-      await setDoc(doc(db, 'skins', skin.id), skin);
+      await setDoc(doc(db, 'skins', skin.id), {
+        ...skin,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, 'skins');
+    }
+  },
+
+  async updateSkin(skinId: string, data: any) {
+    try {
+      await updateDoc(doc(db, 'skins', skinId), {
+        ...data,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, `skins/${skinId}`);
+    }
+  },
+
+  async deleteSkin(skinId: string) {
+    try {
+      await deleteDoc(doc(db, 'skins', skinId));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, `skins/${skinId}`);
     }
   },
 

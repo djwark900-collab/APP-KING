@@ -7,15 +7,18 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 export const Shop: React.FC = () => {
-  const { profile, user, pendingScore, forceSync, isSyncing, quotaExceeded, frames } = useAuth();
-  const [skins, setSkins] = useState<any[]>([]);
+  const { profile, user, pendingScore, forceSync, isSyncing, quotaExceeded, frames, skins: contextSkins } = useAuth();
+  const [dbSkins, setDbSkins] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
 
     const unsubSkins = onSnapshot(collection(db, 'skins'), (snap) => {
-      setSkins(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setDbSkins(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       setIsLoading(false);
     }, (err) => {
       console.error("Shop skins error:", err);
@@ -50,8 +53,9 @@ export const Shop: React.FC = () => {
     for (const s of SHORE_ITEMS.skins) await userService.addSkin(s);
   };
 
-  // Use Firestore items if available, otherwise fallback to constants for initial empty state
-  const displayedSkins = skins.length > 0 ? skins : SHORE_ITEMS.skins;
+  // Merge context/db items with static items
+  const allFrames = frames.length > 0 ? frames : SHORE_ITEMS.frames;
+  const allSkins = dbSkins.length > 0 ? dbSkins : contextSkins.length > 0 ? contextSkins : SHORE_ITEMS.skins;
 
   return (
     <div className="p-6 bg-[#0F0F0F] min-h-full">
@@ -142,7 +146,7 @@ export const Shop: React.FC = () => {
               </span>
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              {frames.map(frame => (
+              {allFrames.map(frame => (
                 <motion.div 
                   key={frame.id}
                   whileHover={{ scale: 1.02 }}
@@ -160,7 +164,7 @@ export const Shop: React.FC = () => {
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60 pointer-events-none" />
                   </div>
-                  <h4 className="font-black text-[10px] mb-2 truncate uppercase italic tracking-tighter text-white/90">{frame.name}</h4>
+                  <h4 className="font-black text-[10px] mb-2 truncate uppercase italic tracking-tighter text-white/90" style={frame.color ? { color: frame.color } : {}}>{frame.name}</h4>
                   <button 
                     onClick={() => handlePurchase(frame, 'frame')}
                     className={`w-full py-2.5 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all ${
@@ -232,7 +236,7 @@ export const Shop: React.FC = () => {
               </span>
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              {displayedSkins.map(skin => {
+              {allSkins.map(skin => {
                 const SkinIcon = (ICONS as any)[skin.icon || 'Shield'] || ICONS.Tapper;
                 const isSelected = profile?.selectedSkinId === skin.id;
                 const isOwned = profile?.ownedSkins?.includes(skin.id);
@@ -251,10 +255,10 @@ export const Shop: React.FC = () => {
                        {skin.image ? (
                           <img src={skin.image} alt="" className="w-full h-full object-contain p-2 group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
                        ) : (
-                          <SkinIcon className={`w-10 h-10 ${isSelected ? 'text-[#F2A900]' : 'text-gray-800'} transition-colors`} />
+                          <SkinIcon className={`w-10 h-10 ${isSelected ? 'text-[#F2A900]' : 'text-gray-800'} transition-colors`} style={skin.color ? { color: skin.color } : {}} />
                        )}
                     </div>
-                    <h4 className="font-black text-[10px] mb-2 truncate uppercase italic tracking-tighter text-white/90">{skin.name}</h4>
+                    <h4 className="font-black text-[10px] mb-2 truncate uppercase italic tracking-tighter text-white/90" style={skin.color ? { color: skin.color } : {}}>{skin.name}</h4>
                     <button 
                       onClick={() => handlePurchase(skin, 'skin')}
                       className={`w-full py-2.5 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all ${
