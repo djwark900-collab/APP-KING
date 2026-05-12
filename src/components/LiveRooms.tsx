@@ -5,8 +5,7 @@ import { roomService, Room, Message } from '../services/roomService';
 import { ICONS, THEME } from '../constants';
 
 export const LiveRooms: React.FC = () => {
-  const { profile } = useAuth();
-  const [rooms, setRooms] = useState<Room[]>([]);
+  const { profile, rooms } = useAuth();
   const [activeRoom, setActiveRoom] = useState<Room | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -24,8 +23,6 @@ export const LiveRooms: React.FC = () => {
   ];
 
   useEffect(() => {
-    const unsub = roomService.subscribeToRooms(setRooms);
-    return () => unsub();
   }, []);
 
   useEffect(() => {

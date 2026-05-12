@@ -8,35 +8,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Profile } from './Profile';
 
 export const Leaderboard: React.FC = () => {
-  const { user, pendingScore, forceSync, isSyncing, quotaExceeded, frames } = useAuth();
-  const [topSurvivors, setTopSurvivors] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { user, pendingScore, forceSync, isSyncing, quotaExceeded, frames, topSurvivors } = useAuth();
+  const [loading, setLoading] = useState(!topSurvivors.length);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) return;
-
-    const fetchTopPlayers = async () => {
-      setLoading(true);
-      try {
-        const q = query(
-          collection(db, 'users'), 
-          where('score', '>=', 1),
-          orderBy('score', 'desc'), 
-          limit(20)
-        );
-        const snap = await getDocs(q);
-        const users = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setTopSurvivors(users);
-      } catch (err) {
-        console.warn("Leaderboard fetch error (quota?):", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTopPlayers();
-  }, [user]);
+    if (topSurvivors.length > 0) {
+      setLoading(false);
+    }
+  }, [topSurvivors]);
 
   const getFrameById = (id: string) => {
     return frames.find(f => f.id === id);

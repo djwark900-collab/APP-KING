@@ -6,9 +6,8 @@ import { roomService, Room } from '../services/roomService';
 import { ICONS, THEME, SHORE_ITEMS, calculateLevel, calculateRoyalPass, LEVELS } from '../constants';
 
 export const Home: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'profile' | 'settings' | 'admin' | 'rp' | 'live') => void }> = ({ onNavigate }) => {
-  const { profile, user, pendingScore, isSyncing, addScoreLocal, forceSync } = useAuth();
+  const { profile, user, pendingScore, isSyncing, addScoreLocal, forceSync, rooms } = useAuth();
   const [taps, setTaps] = useState<{ id: number; x: number; y: number; rotate: number }[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
   const [particles, setParticles] = useState<{ id: number; x: number; y: number; vx: number; vy: number }[]>([]);
   const [shockwaves, setShockwaves] = useState<{ id: number; x: number; y: number }[]>([]);
   
@@ -88,9 +87,6 @@ export const Home: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'prof
     userService.getCreatorInfo().then(info => {
       if (info) setCreator({ name: info.name || '', logo: info.logo || '' });
     });
-
-    const unsubRooms = roomService.subscribeToRooms(setRooms);
-    return () => unsubRooms();
   }, []);
 
   useEffect(() => {

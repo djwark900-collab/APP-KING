@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
-import { doc, onSnapshot, collection, getDocs, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, collection, getDocs, getDoc, query, where, orderBy, limit } from 'firebase/firestore';
 import { userService } from '../services/userService';
+import { roomService } from '../services/roomService';
 import { SHORE_ITEMS, ROYAL_PASS_REWARDS, calculateLevel, calculateRoyalPass } from '../constants';
 
 interface AuthContextType {
@@ -17,6 +18,9 @@ interface AuthContextType {
   frames: any[];
   skins: any[];
   rpRewards: any[];
+  topSurvivors: any[];
+  rooms: any[];
+  quotaExceeded: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({ 
@@ -30,7 +34,10 @@ const AuthContext = createContext<AuthContextType>({
   refreshProfile: async () => {},
   frames: [],
   skins: [],
-  rpRewards: []
+  rpRewards: [],
+  topSurvivors: [],
+  rooms: [],
+  quotaExceeded: false
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -39,9 +46,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [frames, setFrames] = useState<any[]>([]);
   const [skins, setSkins] = useState<any[]>([]);
   const [rpRewards, setRpRewards] = useState<any[]>([]);
+  const [topSurvivors, setTopSurvivors] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<any[]>([]);
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
   const [loading, setLoading] = useState(true);
   
-  // Scoring Buffer State
+  const lastLeaderboardFetchRef = React.useRef<number>(0);
   const [pendingScore, setPendingScore] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const pendingScoreRef = React.useRef(0);
@@ -103,6 +113,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           getDocs(collection(db, 'skins')),
           getDocs(collection(db, 'rp_rewards'))
         ]);
+        
+        setQuotaExceeded(false);
 
         const dbFrames = framesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         const allFrames: any[] = [...SHORE_ITEMS.frames];
@@ -123,15 +135,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           setRpRewards(ROYAL_PASS_REWARDS);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.warn("Assets fetch failed (quota?), using defaults:", err);
+        if (err.message?.includes("quota")) setQuotaExceeded(true);
         setFrames(SHORE_ITEMS.frames);
         setSkins(SHORE_ITEMS.skins);
         setRpRewards(ROYAL_PASS_REWARDS);
       }
     };
 
+    const fetchLeaderboard = async () => {
+      // Cache leaderboard for 5 minutes
+      if (Date.now() - lastLeaderboardFetchRef.current < 5 * 60 * 1000) return;
+
+      try {
+        const survivors = await userService.getLeaderboard(20);
+        setTopSurvivors(survivors);
+        lastLeaderboardFetchRef.current = Date.now();
+      } catch (err: any) {
+        if (err.message?.includes("quota")) setQuotaExceeded(true);
+      }
+    };
+
     fetchAssets();
+    fetchLeaderboard();
   }, []);
 
   useEffect(() => {
@@ -180,6 +207,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
+  // Sync leaderboard when profile score changes significantly (e.g. after a sync)
+  useEffect(() => {
+    if (profile?.score && Date.now() - lastLeaderboardFetchRef.current > 60000) {
+      // Small optimization: Only re-fetch if we haven't in a minute
+      userService.getLeaderboard(20).then(res => {
+        setTopSurvivors(res);
+        lastLeaderboardFetchRef.current = Date.now();
+      }).catch(() => {});
+    }
+  }, [profile?.score]);
+
     // Periodic Sync & Visibility Change Sync
     useEffect(() => {
       if (!user) return;
@@ -216,6 +254,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  useEffect(() => {
+    // Only subscribe to rooms if user is logged in
+    if (!user) {
+      setRooms([]);
+      return;
+    }
+
+    try {
+      const q = query(
+        collection(db, 'rooms'), 
+        where('status', '==', 'live'),
+        orderBy('createdAt', 'desc'), 
+        limit(20) // Reduced from 50 to 20 to save quota
+      );
+      
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const liveRooms = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setRooms(liveRooms);
+      }, (err: any) => {
+        if (err.message?.includes("quota")) setQuotaExceeded(true);
+      });
+
+      return unsubscribe;
+    } catch (err) {
+      console.warn("Room subscription failed:", err);
+    }
+  }, [user]);
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -228,7 +294,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       refreshProfile,
       frames,
       skins,
-      rpRewards
+      rpRewards,
+      topSurvivors,
+      rooms,
+      quotaExceeded
     }}>
       {!loading && children}
     </AuthContext.Provider>

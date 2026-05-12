@@ -140,9 +140,13 @@ export const RoyalPass: React.FC = () => {
                     : 'bg-[#121212] border-white/5'
               }`}>
                 <div className="flex items-center gap-4">
-                  <div className="flex flex-col items-center justify-center w-10 border-r border-white/5 pr-4 mr-2">
-                    <span className={`text-xs font-black italic ${isUnlocked ? 'text-[#F2A900]' : 'text-gray-700'}`}>{reward.level}</span>
-                    <span className="text-[7px] font-black text-gray-500 uppercase">TIER</span>
+                  <div className="flex flex-col items-center justify-center w-14 border-r border-white/5 pr-4 mr-1">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-1 transform -rotate-12 ${
+                      isUnlocked ? 'bg-[#F2A900] text-black shadow-[0_0_15px_rgba(242,169,0,0.4)]' : 'bg-[#1A1A1A] text-gray-700 border border-white/5'
+                    }`}>
+                      <span className="text-sm font-black italic pr-0.5">{reward.level}</span>
+                    </div>
+                    <span className={`text-[6px] font-black uppercase tracking-widest ${isUnlocked ? 'text-[#F2A900]' : 'text-gray-800'}`}>TIER</span>
                   </div>
                   
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center border-2 transition-all relative overflow-hidden ${

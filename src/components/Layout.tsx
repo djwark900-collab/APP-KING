@@ -16,7 +16,7 @@ export const Layout: React.FC = () => {
     const savedTab = localStorage.getItem('activeTab');
     return (savedTab as any) || 'home';
   });
-  const { profile } = useAuth();
+  const { profile, quotaExceeded } = useAuth();
   
   const isAdmin = profile?.email === 'traleague@gmail.com' || profile?.isAdmin;
 
@@ -52,6 +52,11 @@ export const Layout: React.FC = () => {
 
   return (
     <div className="flex flex-col h-[100dvh] bg-[#0F0F0F] text-white overflow-hidden max-w-md mx-auto shadow-2xl border-x border-[#222]">
+      {quotaExceeded && (
+        <div className="bg-red-600 text-white text-[10px] font-black uppercase text-center p-2 animate-pulse z-[100]">
+          Daily Quota Exceeded. Data may not load or save until reset.
+        </div>
+      )}
       {/* Top Bar */}
       <div className="h-16 flex items-center justify-between px-6 bg-[#1A1A1A] border-bottom border-[#333] shrink-0 z-20">
         <div className="flex items-center gap-2">
