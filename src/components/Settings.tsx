@@ -2,14 +2,17 @@ import React, { useState } from 'react';
 import { auth } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
 import { ICONS, THEME } from '../constants';
-import { AdminDashboard } from './AdminDashboard';
 import { motion } from 'motion/react';
+import { useAuth } from '../contexts/AuthContext';
 
-export const Settings: React.FC = () => {
-  const [isAdminOpen, setIsAdminOpen] = useState(false);
-  const [adminPass, setAdminPass] = useState('');
-  const [showAdminInput, setShowAdminInput] = useState(false);
-  
+interface SettingsProps {
+  onNavigate: (tab: 'home' | 'shop' | 'top' | 'profile' | 'settings' | 'admin' | 'rp') => void;
+}
+
+export const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
+  const { profile } = useAuth();
+  const isAdmin = profile?.email === 'traleague@gmail.com' || profile?.email === 'zakho@gmail.com' || profile?.isAdmin;
+
   // Game Settings State
   const [settings, setSettings] = useState({
     masterVolume: 80,
@@ -26,16 +29,6 @@ export const Settings: React.FC = () => {
     }
   };
 
-  const handleAdminCheck = () => {
-    if (adminPass === 'EMAD8912') {
-      setIsAdminOpen(true);
-      setShowAdminInput(false);
-      setAdminPass('');
-    } else {
-      alert('Wrong frequency. Access denied.');
-    }
-  };
-
   const toggleSetting = (key: keyof typeof settings) => {
     setSettings(prev => ({
       ...prev,
@@ -45,8 +38,6 @@ export const Settings: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-[#0F0F0F] relative overflow-hidden">
-      {isAdminOpen && <AdminDashboard onClose={() => setIsAdminOpen(false)} />}
-      
       <div className="p-6 pt-8 pb-4">
         <h2 className="text-3xl font-black italic tracking-tighter uppercase leading-none mb-1 text-white">SETTINGS</h2>
         <div className="flex items-center gap-2">
@@ -121,7 +112,7 @@ export const Settings: React.FC = () => {
           </h3>
           
           <div className="grid grid-cols-1 gap-3">
-             <button 
+            <button 
               onClick={() => toggleSetting('notifications')}
               className="flex items-center justify-between p-4 bg-[#1A1A1A] border border-white/5 rounded-2xl group active:scale-[0.98] transition-all"
             >
@@ -136,50 +127,33 @@ export const Settings: React.FC = () => {
               </div>
               <div className={`w-2 h-2 rounded-full ${settings.notifications ? 'bg-[#F2A900] shadow-[0_0_8px_rgba(242,169,0,0.5)]' : 'bg-gray-800'}`} />
             </button>
-
-            <button 
-              onClick={() => setShowAdminInput(!showAdminInput)}
-              className="flex items-center justify-between p-4 bg-black/40 border-2 border-[#F2A900]/20 rounded-2xl group active:scale-[0.98] transition-all hover:border-[#F2A900]/50"
-            >
-              <div className="flex items-center gap-4 text-left">
-                <div className="w-10 h-10 bg-[#F2A900]/10 text-[#F2A900] rounded-xl flex items-center justify-center border border-[#F2A900]/20 group-hover:scale-110 transition-transform">
-                  <ICONS.Star className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="font-bold uppercase text-xs text-[#F2A900]">Admin Protocol</div>
-                  <div className="text-[9px] text-[#F2A900]/50 font-bold uppercase tracking-wider">Restricted Access</div>
-                </div>
-              </div>
-              <ICONS.Lock className="w-4 h-4 text-[#F2A900]/30" />
-            </button>
-
-            {showAdminInput && (
-              <motion.div 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="bg-[#1A1A1A] border-2 border-[#F2A900] rounded-2xl p-4 space-y-4 shadow-[0_10px_30px_rgba(0,0,0,0.5)] overflow-hidden"
-              >
-                <h4 className="text-[10px] font-black italic text-[#F2A900] uppercase tracking-widest">AUTHENTICATION REQUIRED</h4>
-                <div className="flex gap-2">
-                  <input 
-                    type="password"
-                    autoFocus
-                    value={adminPass}
-                    onChange={e => setAdminPass(e.target.value)}
-                    placeholder="ACCESS KEY"
-                    className="flex-1 bg-black text-[#F2A900] font-mono text-xs p-3 rounded-xl outline-none border border-white/5 focus:border-[#F2A900]"
-                  />
-                  <button 
-                    onClick={handleAdminCheck}
-                    className="bg-[#F2A900] text-black px-6 rounded-xl font-black text-[10px] uppercase shadow-lg shadow-[#F2A900]/20 active:scale-95 transition-all"
-                  >
-                    DEPLOY
-                  </button>
-                </div>
-              </motion.div>
-            )}
           </div>
         </div>
+
+        {/* Security Section */}
+        {isAdmin && (
+          <div className="mb-8 space-y-4">
+            <h3 className="text-[10px] font-black text-[#F2A900] uppercase tracking-widest flex items-center gap-2">
+              <ICONS.Star className="w-3.5 h-3.5" /> COMMAND CENTER
+            </h3>
+            
+            <button 
+              onClick={() => onNavigate('admin')}
+              className="w-full flex items-center justify-between p-5 bg-black/40 border-2 border-[#F2A900]/20 rounded-2xl group active:scale-[0.98] transition-all hover:border-[#F2A900]/50 hover:bg-[#F2A900]/5 shadow-[0_10px_30px_rgba(242,169,0,0.05)]"
+            >
+              <div className="flex items-center gap-4 text-left">
+                <div className="w-12 h-12 bg-[#F2A900]/10 text-[#F2A900] rounded-xl flex items-center justify-center border border-[#F2A900]/20 group-hover:scale-110 transition-transform">
+                  <ICONS.Shield className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="font-black italic uppercase text-sm text-[#F2A900]">Admin Protocol</div>
+                  <div className="text-[9px] text-[#F2A900]/50 font-bold uppercase tracking-wider">Access System Mainframe</div>
+                </div>
+              </div>
+              <ICONS.Chevron className="w-5 h-5 text-[#F2A900]/30 group-hover:text-[#F2A900]/60 transition-colors" />
+            </button>
+          </div>
+        )}
 
         {/* Statistics & Info */}
         <div className="mb-10 bg-gradient-to-r from-red-600/10 to-transparent border-l-4 border-red-600 p-6 rounded-r-2xl">

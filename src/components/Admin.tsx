@@ -7,16 +7,19 @@ import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 export const Admin: React.FC = () => {
-  const { profile, frames, skins } = useAuth();
+  const { profile } = useAuth();
   const [loading, setLoading] = useState(false);
 
+  const [frames, setFrames] = useState<any[]>([]);
+  const [skins, setSkins] = useState<any[]>([]);
+  const [rpRewards, setRpRewards] = useState<any[]>([]);
+  
   // Security check: only allows admin access
-  const isAdmin = profile?.email === 'traleague@gmail.com' || profile?.isAdmin;
+  const isAdmin = profile?.email === 'traleague@gmail.com' || profile?.email === 'zakho@gmail.com' || profile?.isAdmin;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingFrame, setEditingFrame] = useState<any>(null);
   const [editingRp, setEditingRp] = useState<any>(null);
   const [editingSkin, setEditingSkin] = useState<any>(null);
-  const [rpRewards, setRpRewards] = useState<any[]>([]);
   const [activeAdminTab, setActiveAdminTab] = useState<'frames' | 'rp' | 'skins' | 'creator'>('frames');
   const [creatorInfo, setCreatorInfo] = useState({ name: '', logo: '' });
   const [formState, setFormState] = useState({ 
@@ -41,9 +44,16 @@ export const Admin: React.FC = () => {
   useEffect(() => {
     if (!isAdmin) return;
     
-    const qR = query(collection(db, 'rp_rewards'), orderBy('level', 'asc'));
-    const unsubR = onSnapshot(qR, (snap) => {
+    const unsubR = onSnapshot(query(collection(db, 'rp_rewards'), orderBy('level', 'asc')), (snap) => {
       setRpRewards(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any));
+    });
+
+    const unsubF = onSnapshot(collection(db, 'frames'), (snap) => {
+      setFrames(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any));
+    });
+
+    const unsubS = onSnapshot(collection(db, 'skins'), (snap) => {
+      setSkins(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any));
     });
 
     const fetchCreator = async () => {
@@ -52,7 +62,11 @@ export const Admin: React.FC = () => {
     };
     fetchCreator();
 
-    return () => unsubR();
+    return () => {
+      unsubR();
+      unsubF();
+      unsubS();
+    };
   }, [isAdmin]);
 
   const handleSaveCreator = async (e: React.FormEvent) => {
@@ -141,9 +155,17 @@ export const Admin: React.FC = () => {
   };
 
   const handleInitRP = async () => {
-    if (confirm("Initialize RP Rewards with default data?")) {
+    if (confirm("RE-INITIALIZE PROTOCOL: This will overwrite Royal Pass levels with the standard 1-25 template. Proceed?")) {
       const { ROYAL_PASS_REWARDS } = await import('../constants');
-      await userService.initRpRewards(ROYAL_PASS_REWARDS);
+      setLoading(true);
+      try {
+        await userService.initRpRewards(ROYAL_PASS_REWARDS);
+        alert("Sector initialized to Standard 1-25 levels.");
+      } catch (err: any) {
+        alert(err.message);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -165,12 +187,12 @@ export const Admin: React.FC = () => {
           <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">System Administration</p>
         </div>
         <div className="flex gap-2">
-          {rpRewards.length === 0 && activeAdminTab === 'rp' && (
+          {activeAdminTab === 'rp' && (
             <button 
               onClick={handleInitRP}
-              className="bg-blue-600/20 text-blue-400 border border-blue-500/30 px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-blue-600 hover:text-white transition-all shadow-lg shadow-blue-900/20"
+              className="bg-[#F2A900]/10 text-[#F2A900] border border-[#F2A900]/30 px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-[#F2A900] hover:text-black transition-all shadow-lg active:scale-95"
             >
-              Init Defaults
+              Reset to 1-25 Template
             </button>
           )}
           <div className="w-12 h-12 bg-red-600/20 border border-red-600/40 rounded-xl flex items-center justify-center">

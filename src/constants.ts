@@ -22,7 +22,8 @@ import {
   Volume2,
   VolumeX,
   Bell,
-  Fingerprint
+  Fingerprint,
+  ChevronRight
 } from 'lucide-react';
 
 export const calculateLevel = (score: number) => {
@@ -35,8 +36,8 @@ export const calculateRoyalPass = (score: number) => {
   const level = Math.floor(score / pointsPerLevel) + 1;
   const progress = (score % pointsPerLevel) / pointsPerLevel * 100;
   return {
-    level: Math.min(level, 50),
-    progress: level >= 50 ? 100 : progress,
+    level: Math.min(level, 25),
+    progress: level >= 25 ? 100 : progress,
     pointsToNext: pointsPerLevel - (score % pointsPerLevel)
   };
 };
@@ -66,11 +67,15 @@ export const ICONS = {
   Sound: Volume2,
   Mute: VolumeX,
   Notification: Bell,
-  Security: Fingerprint
+  Security: Fingerprint,
+  Chevron: ChevronRight
 };
 
 export const LEVELS = [
-  { rank: 'Bronze', min: 1, icon: 'Shield' },
+  { rank: 'Bronze IV', min: 1, icon: 'Shield' },
+  { rank: 'Bronze III', min: 2, icon: 'Shield' },
+  { rank: 'Bronze II', min: 3, icon: 'Shield' },
+  { rank: 'Bronze I', min: 4, icon: 'Shield' },
   { rank: 'Silver', min: 5, icon: 'Shield' },
   { rank: 'Gold', min: 15, icon: 'Star' },
   { rank: 'Platinum', min: 30, icon: 'Target' },

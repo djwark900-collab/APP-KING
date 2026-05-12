@@ -41,7 +41,7 @@ export const Layout: React.FC = () => {
       case 'shop': return <Shop />;
       case 'top': return <Leaderboard />;
       case 'profile': return <Profile />;
-      case 'settings': return <Settings />;
+      case 'settings': return <Settings onNavigate={setActiveTab} />;
       case 'admin': return <Admin />;
       case 'rp': return <RoyalPass />;
       default: return <Home />;
