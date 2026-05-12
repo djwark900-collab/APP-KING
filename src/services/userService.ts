@@ -450,6 +450,16 @@ export const userService = {
     }
   },
 
+  async deleteUserProfile(userId: string) {
+    if (isQuotaExceeded()) return;
+    const path = `users/${userId}`;
+    try {
+      await deleteDoc(doc(db, 'users', userId));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, path);
+    }
+  },
+
   async updateCreatorInfo(data: { name: string, logo: string }) {
     if (isQuotaExceeded()) return;
     try {

@@ -10,8 +10,10 @@ interface SettingsProps {
 }
 
 export const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
-  const { profile } = useAuth();
+  const { profile, deleteAccount } = useAuth();
   const isAdmin = profile?.email === 'traleague@gmail.com' || profile?.email === 'zakho@gmail.com' || profile?.isAdmin;
+
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Game Settings State
   const [settings, setSettings] = useState({
@@ -26,6 +28,18 @@ export const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
   const handleLogout = () => {
     if (confirm("Are you sure you want to abandon the mission?")) {
       signOut(auth);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (confirm("WARNING: THIS ACTION IS IRREVERSIBLE. ALL PROGRESS, SKINS, AND SCORE WILL BE PERMANENTLY DELETED FROM THE LIVE SERVERS. PROCEED?")) {
+      try {
+        setIsDeleting(true);
+        await deleteAccount();
+      } catch (err) {
+        alert("Failed to wipe data. You may need to re-authenticate.");
+        setIsDeleting(false);
+      }
     }
   };
 
@@ -156,14 +170,23 @@ export const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
         )}
 
         {/* Statistics & Info */}
-        <div className="mb-10 bg-gradient-to-r from-red-600/10 to-transparent border-l-4 border-red-600 p-6 rounded-r-2xl">
-          <h4 className="text-xs font-black text-white italic uppercase tracking-tighter mb-4">CRITICAL ZONE</h4>
+        <div className="mb-10 bg-gradient-to-r from-red-600/10 to-transparent border-l-4 border-red-600 p-6 rounded-r-2xl space-y-4">
+          <h4 className="text-xs font-black text-white italic uppercase tracking-tighter mb-1">CRITICAL ZONE</h4>
+          
           <button 
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-3 bg-red-600 text-white font-black py-4 rounded-xl hover:bg-red-700 shadow-xl shadow-red-900/20 transition-all uppercase tracking-tighter italic"
+            className="w-full flex items-center justify-center gap-3 bg-red-600/20 text-red-500 border border-red-600/30 font-black py-4 rounded-xl hover:bg-red-600 hover:text-white shadow-xl shadow-red-900/20 transition-all uppercase tracking-tighter italic"
           >
             <ICONS.Logout className="w-5 h-5" />
             Terminate Mission Profile
+          </button>
+
+          <button 
+            onClick={handleDeleteAccount}
+            disabled={isDeleting}
+            className="w-full text-[10px] font-black text-red-500/50 hover:text-red-500 uppercase tracking-widest transition-colors py-2 disabled:opacity-50"
+          >
+            {isDeleting ? 'WIPING DATA...' : 'Permanently Wipe Save Data'}
           </button>
         </div>
 

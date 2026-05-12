@@ -15,6 +15,7 @@ interface AuthContextType {
   addScoreLocal: (amount: number) => void;
   forceSync: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   frames: any[];
   skins: any[];
   rpRewards: any[];
@@ -32,6 +33,7 @@ const AuthContext = createContext<AuthContextType>({
   addScoreLocal: () => {},
   forceSync: async () => {},
   refreshProfile: async () => {},
+  deleteAccount: async () => {},
   frames: [],
   skins: [],
   rpRewards: [],
@@ -311,6 +313,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const deleteAccount = async () => {
+    if (!user) return;
+    try {
+      await userService.deleteUserProfile(user.uid);
+      await auth.signOut();
+      localStorage.clear();
+      window.location.reload();
+    } catch (err) {
+      console.error("Account deletion failed:", err);
+      throw err;
+    }
+  };
+
   useEffect(() => {
     // Only subscribe to rooms if user is logged in and quota is healthy
     if (!user || quotaExceeded) {
@@ -352,6 +367,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addScoreLocal, 
       forceSync,
       refreshProfile,
+      deleteAccount,
       frames,
       skins,
       rpRewards,
