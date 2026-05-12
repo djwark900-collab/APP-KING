@@ -5,7 +5,7 @@ import { roomService, Room, Message } from '../services/roomService';
 import { ICONS, THEME } from '../constants';
 
 export const LiveRooms: React.FC = () => {
-  const { profile, rooms } = useAuth();
+  const { profile, rooms, quotaExceeded } = useAuth();
   const [activeRoom, setActiveRoom] = useState<Room | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -26,7 +26,7 @@ export const LiveRooms: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (activeRoom) {
+    if (activeRoom && !quotaExceeded) {
       const unsub = roomService.subscribeToMessages(activeRoom.id, (msgs) => {
         setMessages(msgs);
         // Trigger animations for new gifts
@@ -43,7 +43,7 @@ export const LiveRooms: React.FC = () => {
     } else {
       setMessages([]);
     }
-  }, [activeRoom?.id]);
+  }, [activeRoom?.id, quotaExceeded]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });

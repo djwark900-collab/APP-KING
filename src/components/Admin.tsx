@@ -79,7 +79,7 @@ export const Admin: React.FC = () => {
       unsubF();
       unsubS();
     };
-  }, [isAdmin]);
+  }, [isAdmin, quotaExceeded]);
 
   const handleSaveCreator = async (e: React.FormEvent) => {
     e.preventDefault();

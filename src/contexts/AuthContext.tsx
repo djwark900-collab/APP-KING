@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth, db } from '../lib/firebase';
+import { auth, db, isQuotaExceeded, handleFirestoreError, OperationType } from '../lib/firebase';
 import { doc, onSnapshot, collection, getDocs, getDoc, query, where, orderBy, limit } from 'firebase/firestore';
 import { userService } from '../services/userService';
 import { roomService } from '../services/roomService';
@@ -66,17 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cached = localStorage.getItem('cache_rooms');
     return cached ? JSON.parse(cached) : [];
   });
-  const [quotaExceeded, setQuotaExceeded] = useState(() => {
-    const lastError = localStorage.getItem('quota_error_time');
-    if (!lastError) return false;
-    const lastErrorTime = parseInt(lastError);
-    // Quota resets daily; if 12h passed or it's a new day, we can try again
-    if (Date.now() - lastErrorTime > 12 * 60 * 60 * 1000) {
-      localStorage.removeItem('quota_error_time');
-      return false;
-    }
-    return true;
-  });
+  const [quotaExceeded, setQuotaExceeded] = useState(() => isQuotaExceeded());
   const [loading, setLoading] = useState(true);
   
   const handleQuotaError = () => {
@@ -138,6 +128,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setPendingScore(prev => Math.max(0, prev - amountToSync));
     } catch (e: any) {
       console.warn("Sync failed:", e.message);
+      if (e.message?.includes("quota") || e.code === "resource-exhausted") {
+        handleQuotaError();
+      }
     } finally {
       setIsSyncing(false);
     }
@@ -147,7 +140,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Fetch static items once on mount instead of using real-time listeners
     const fetchAssets = async () => {
       // Use cached/default values immediately if quota is exceeded
-      if (quotaExceeded) {
+      // Or if we have cached assets and they are relatively recent (24h)
+      const lastAssetFetch = localStorage.getItem('last_asset_fetch');
+      const hasCache = frames.length > 0 && skins.length > 0 && rpRewards.length > 0;
+      const isRelativelyRecent = lastAssetFetch && (Date.now() - parseInt(lastAssetFetch) < 24 * 60 * 60 * 1000);
+
+      if (quotaExceeded || (hasCache && isRelativelyRecent)) {
         if (!frames.length) setFrames(SHORE_ITEMS.frames);
         if (!skins.length) setSkins(SHORE_ITEMS.skins);
         if (!rpRewards.length) setRpRewards(ROYAL_PASS_REWARDS);
@@ -155,53 +153,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       try {
-        const [framesSnap, skinsSnap, rpSnap] = await Promise.all([
-          getDocs(collection(db, 'frames')),
-          getDocs(collection(db, 'skins')),
-          getDocs(collection(db, 'rp_rewards'))
+        const [dbFrames, dbSkins, dbRpRewards] = await Promise.all([
+          userService.getFrames(),
+          userService.getSkins(),
+          userService.getRpRewards()
         ]);
         
         setQuotaExceeded(false);
         localStorage.removeItem('quota_error_time');
+        localStorage.setItem('last_asset_fetch', Date.now().toString());
 
-        const dbFrames = framesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         const allFrames: any[] = [...SHORE_ITEMS.frames];
-        dbFrames.forEach(df => {
+        dbFrames.forEach((df: any) => {
           if (!allFrames.find(af => af.id === df.id)) allFrames.push(df);
         });
         setFrames(allFrames);
         localStorage.setItem('cache_frames', JSON.stringify(allFrames));
 
-        const dbSkins = skinsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         const allSkins: any[] = [...SHORE_ITEMS.skins];
-        dbSkins.forEach(ds => {
+        dbSkins.forEach((ds: any) => {
           if (!allSkins.find(as => as.id === ds.id)) allSkins.push(ds);
         });
         setSkins(allSkins);
         localStorage.setItem('cache_skins', JSON.stringify(allSkins));
 
-        if (!rpSnap.empty) {
-          const rewards = rpSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setRpRewards(rewards);
-          localStorage.setItem('cache_rpRewards', JSON.stringify(rewards));
+        if (dbRpRewards.length > 0) {
+          setRpRewards(dbRpRewards);
+          localStorage.setItem('cache_rpRewards', JSON.stringify(dbRpRewards));
         } else {
           setRpRewards(ROYAL_PASS_REWARDS);
           localStorage.setItem('cache_rpRewards', JSON.stringify(ROYAL_PASS_REWARDS));
         }
       } catch (err: any) {
         console.warn("Assets fetch failed (quota?), using defaults:", err);
-        if (err.message?.includes("quota") || err.code === "resource-exhausted") {
-          handleQuotaError();
-        }
         setFrames(SHORE_ITEMS.frames);
         setSkins(SHORE_ITEMS.skins);
         setRpRewards(ROYAL_PASS_REWARDS);
       }
     };
 
+    fetchAssets();
+  }, [quotaExceeded]); 
+
+  useEffect(() => {
     const fetchLeaderboard = async () => {
-      // Block if quota exceeded or we already have recent data
-      if (quotaExceeded || (Date.now() - lastLeaderboardFetchRef.current < 30 * 60 * 1000 && topSurvivors.length > 0)) return;
+      // Significantly extended cache: only try once every 6 hours if we have data
+      if (!user || quotaExceeded || (Date.now() - lastLeaderboardFetchRef.current < 6 * 60 * 60 * 1000 && topSurvivors.length > 0)) return;
 
       try {
         const survivors = await userService.getLeaderboard(20);
@@ -217,9 +214,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    fetchAssets();
     fetchLeaderboard();
-  }, []);
+  }, [user, quotaExceeded]); // Fetch when user logs in or quota resets
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
@@ -344,7 +340,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err) {
       console.warn("Room subscription failed:", err);
     }
-  }, [user]);
+  }, [user, quotaExceeded]);
 
   return (
     <AuthContext.Provider value={{ 

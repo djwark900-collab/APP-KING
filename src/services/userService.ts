@@ -1,4 +1,4 @@
-import { auth, db } from '../lib/firebase';
+import { auth, db, handleFirestoreError, isQuotaExceeded, OperationType } from '../lib/firebase';
 import { calculateLevel, calculateRoyalPass, LEVEL_REWARDS } from '../constants';
 import { 
   collection, 
@@ -16,53 +16,6 @@ import {
   increment,
   arrayUnion
 } from 'firebase/firestore';
-
-export enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string | null;
-    email?: string | null;
-    emailVerified?: boolean | null;
-  }
-}
-
-function isQuotaExceeded() {
-  const lastError = localStorage.getItem('quota_error_time');
-  if (!lastError) return false;
-  const lastErrorTime = parseInt(lastError);
-  return (Date.now() - lastErrorTime < 12 * 60 * 60 * 1000);
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const err = error as any;
-  if (err?.message?.includes("quota") || err?.code === "resource-exhausted") {
-    localStorage.setItem('quota_error_time', Date.now().toString());
-  }
-  
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-    },
-    operationType,
-    path
-  };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
 
 export const userService = {
   async getFrames() {
@@ -109,6 +62,7 @@ export const userService = {
   },
 
   async createUserProfile(userId: string, email: string, displayName: string) {
+    if (isQuotaExceeded()) return;
     const path = `users/${userId}`;
     try {
       await setDoc(doc(db, 'users', userId), {
@@ -137,6 +91,8 @@ export const userService = {
   },
 
   async getUserProfile(userId: string) {
+    const isSelf = auth.currentUser?.uid === userId;
+    if (isQuotaExceeded()) return isSelf ? JSON.parse(localStorage.getItem('cache_profile') || 'null') : null;
     const path = `users/${userId}`;
     try {
       const snap = await getDoc(doc(db, 'users', userId));
@@ -147,7 +103,7 @@ export const userService = {
   },
 
   async addBulkScore(userId: string, currentScore: number, amount: number) {
-    if (amount <= 0) return;
+    if (amount <= 0 || isQuotaExceeded()) return;
     const path = `users/${userId}`;
     try {
       const newScore = currentScore + amount;
@@ -169,10 +125,11 @@ export const userService = {
 
   async incrementScore(userId: string) {
     // Legacy support, but we should use addBulkScore
-    return this.addBulkScore(userId, 1);
+    return this.addBulkScore(userId, 0, 1);
   },
 
   async buyMultiplier(userId: string, multiplier: number, durationMinutes: number, goldCost: number) {
+    if (isQuotaExceeded()) return;
     const path = `users/${userId}`;
     try {
       const { Timestamp } = await import('firebase/firestore');
@@ -191,6 +148,7 @@ export const userService = {
   },
 
   async exchangeDinnersToMoney(userId: string, currentScore: number, dinnerCost: number, moneyGain: number) {
+    if (isQuotaExceeded()) return;
     const path = `users/${userId}`;
     try {
       if (currentScore < dinnerCost) {
@@ -215,6 +173,7 @@ export const userService = {
   },
 
   async purchaseItem(userId: string, itemId: string, itemType: 'frame' | 'skin', goldCost: number) {
+    if (isQuotaExceeded()) return;
     const path = `users/${userId}`;
     try {
       const { arrayUnion } = await import('firebase/firestore');
@@ -238,6 +197,7 @@ export const userService = {
   },
 
   async selectItem(userId: string, itemId: string, itemType: 'frame' | 'skin') {
+    if (isQuotaExceeded()) return;
     const path = `users/${userId}`;
     try {
       await updateDoc(doc(db, 'users', userId), {
@@ -250,6 +210,7 @@ export const userService = {
   },
 
   async claimRoyalPassReward(userId: string, level: number, reward: any) {
+    if (isQuotaExceeded()) return;
     const path = `users/${userId}`;
     try {
       const snap = await getDoc(doc(db, 'users', userId));
@@ -280,6 +241,7 @@ export const userService = {
   },
 
   async claimLevelReward(userId: string, level: number, rewardGold: number) {
+    if (isQuotaExceeded()) return;
     const path = `users/${userId}`;
     try {
       await updateDoc(doc(db, 'users', userId), {
@@ -293,6 +255,7 @@ export const userService = {
   },
 
   async claimAllAvailableRewards(userId: string, currentLevel: number, currentRpLevel: number, rpRewards: any[]) {
+    if (isQuotaExceeded()) return;
     const path = `users/${userId}`;
     try {
       const snap = await getDoc(doc(db, 'users', userId));
@@ -346,6 +309,7 @@ export const userService = {
   },
 
   async updateProfile(userId: string, data: { displayName?: string, photoURL?: string }) {
+    if (isQuotaExceeded()) return;
     const path = `users/${userId}`;
     try {
       await updateDoc(doc(db, 'users', userId), {
@@ -358,6 +322,7 @@ export const userService = {
   },
 
   async addFrame(frame: any) {
+    if (isQuotaExceeded()) return;
     try {
       await setDoc(doc(db, 'frames', frame.id), {
         ...frame,
@@ -370,6 +335,7 @@ export const userService = {
   },
 
   async updateFrame(frameId: string, data: any) {
+    if (isQuotaExceeded()) return;
     try {
       await updateDoc(doc(db, 'frames', frameId), {
         ...data,
@@ -381,9 +347,8 @@ export const userService = {
   },
 
   async deleteFrame(frameId: string) {
+    if (isQuotaExceeded()) return;
     try {
-      // Note: In a real app we'd need to consider users who own this frame
-      // For this tapper app, we just delete the meta definition
       await deleteDoc(doc(db, 'frames', frameId));
     } catch (e) {
       handleFirestoreError(e, OperationType.DELETE, `frames/${frameId}`);
@@ -391,6 +356,7 @@ export const userService = {
   },
 
   async addSkin(skin: any) {
+    if (isQuotaExceeded()) return;
     try {
       await setDoc(doc(db, 'skins', skin.id), {
         ...skin,
@@ -403,6 +369,7 @@ export const userService = {
   },
 
   async updateSkin(skinId: string, data: any) {
+    if (isQuotaExceeded()) return;
     try {
       await updateDoc(doc(db, 'skins', skinId), {
         ...data,
@@ -414,6 +381,7 @@ export const userService = {
   },
 
   async deleteSkin(skinId: string) {
+    if (isQuotaExceeded()) return;
     try {
       await deleteDoc(doc(db, 'skins', skinId));
     } catch (e) {
@@ -429,12 +397,13 @@ export const userService = {
       const snap = await getDocs(q);
       return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } catch (e: any) {
-      handleFirestoreError(e, OperationType.GET, 'rp_rewards');
+      handleFirestoreError(e, OperationType.LIST, 'rp_rewards');
       return [];
     }
   },
 
   async updateRpReward(level: string, data: any) {
+    if (isQuotaExceeded()) return;
     try {
       await setDoc(doc(db, 'rp_rewards', level), {
         ...data,
@@ -446,6 +415,7 @@ export const userService = {
   },
 
   async initRpRewards(rewards: any[]) {
+    if (isQuotaExceeded()) return;
     try {
       for (const reward of rewards) {
         await setDoc(doc(db, 'rp_rewards', reward.level.toString()), {
@@ -463,7 +433,6 @@ export const userService = {
     if (isQuotaExceeded()) return { name: 'TRA LEAGUE', logo: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop' };
     const path = 'app_settings/creator';
     try {
-      // Try fetching from server if possible, but handle offline gracefully
       const snap = await getDoc(doc(db, 'app_settings', 'creator'));
       if (snap.exists()) {
         return snap.data();
@@ -482,6 +451,7 @@ export const userService = {
   },
 
   async updateCreatorInfo(data: { name: string, logo: string }) {
+    if (isQuotaExceeded()) return;
     try {
       await setDoc(doc(db, 'app_settings', 'creator'), {
         ...data,
