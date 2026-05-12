@@ -105,7 +105,7 @@ export const RoyalPass: React.FC = () => {
             if (unclaimedCount > 0) {
               return (
                 <button 
-                  onClick={() => userService.claimAllAvailableRewards(user!.uid!, profile.level, rpLevel, (rpRewards.length > 0 ? rpRewards : ROYAL_PASS_REWARDS))}
+                  onClick={() => userService.claimAllAvailableRewards(user!.uid!, profile?.level || 1, rpLevel, (rpRewards.length > 0 ? rpRewards : ROYAL_PASS_REWARDS))}
                   className="text-[9px] font-black uppercase bg-[#F2A900] text-black px-4 py-1.5 rounded-lg shadow-xl shadow-[#F2A900]/20 animate-bounce"
                 >
                   COLLECT ALL ({unclaimedCount})

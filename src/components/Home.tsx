@@ -61,7 +61,13 @@ export const Home: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'prof
     }
 
     const interval = setInterval(() => {
-      const remaining = profile.multiplierExpiry.toDate().getTime() - new Date().getTime();
+      const expiry = profile?.multiplierExpiry?.toDate();
+      if (!expiry) {
+        setTimeLeft(0);
+        clearInterval(interval);
+        return;
+      }
+      const remaining = expiry.getTime() - new Date().getTime();
       if (remaining <= 0) {
         setTimeLeft(0);
         clearInterval(interval);

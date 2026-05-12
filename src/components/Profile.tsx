@@ -36,8 +36,8 @@ export const Profile: React.FC<ProfileProps & { onNavigate?: (tab: 'home' | 'sho
 
   useEffect(() => {
     if (isViewingSelf && profile) {
-      setNewName(profile.displayName || '');
-      setNewPhoto(profile.photoURL || '');
+      setNewName(profile?.displayName || '');
+      setNewPhoto(profile?.photoURL || '');
     }
   }, [profile, isViewingSelf]);
 
@@ -68,7 +68,7 @@ export const Profile: React.FC<ProfileProps & { onNavigate?: (tab: 'home' | 'sho
   const currentFrame = frames.find(f => f.id === profile?.selectedFrameId);
   const currentSkin = skins.find(s => s.id === profile?.selectedSkinId);
 
-  const level = profile ? calculateLevel(profile.score) : 1;
+  const level = profile ? calculateLevel(profile?.score || 0) : 1;
   const currentRank = LEVELS.findLast(l => level >= l.min) || LEVELS[0];
   const RankIcon = ICONS[currentRank.icon as keyof typeof ICONS] || ICONS.Shield;
 
@@ -291,7 +291,7 @@ export const Profile: React.FC<ProfileProps & { onNavigate?: (tab: 'home' | 'sho
                 if (unclaimedCount > 0 && profile) {
                   return (
                     <button 
-                      onClick={() => userService.claimAllAvailableRewards(user!.uid!, level, profile.rpLevel || 1, rpRewards)}
+                      onClick={() => userService.claimAllAvailableRewards(user!.uid!, level, profile?.rpLevel || 1, rpRewards)}
                       className="text-[9px] font-black uppercase bg-[#F2A900] text-black px-3 py-1 rounded shadow-lg animate-bounce"
                     >
                       Claim All ({unclaimedCount})
@@ -376,7 +376,7 @@ export const Profile: React.FC<ProfileProps & { onNavigate?: (tab: 'home' | 'sho
                     <div className="grid grid-cols-4 gap-4">
                       {profile?.ownedFrames?.map((frameId: string) => {
                         const frame = frames.find(f => f.id === frameId);
-                        const isSelected = profile.selectedFrameId === frameId;
+                        const isSelected = profile?.selectedFrameId === frameId;
                         return (
                           <motion.button
                             key={frameId}
@@ -412,7 +412,7 @@ export const Profile: React.FC<ProfileProps & { onNavigate?: (tab: 'home' | 'sho
                     <div className="grid grid-cols-4 gap-4">
                       {profile?.ownedSkins?.map((skinId: string) => {
                         const skin = skins.find(s => s.id === skinId);
-                        const isSelected = profile.selectedSkinId === skinId;
+                        const isSelected = profile?.selectedSkinId === skinId;
                         return (
                           <motion.button
                             key={skinId}
