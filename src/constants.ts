@@ -23,7 +23,10 @@ import {
   VolumeX,
   Bell,
   Fingerprint,
-  ChevronRight
+  ChevronRight,
+  Radio,
+  Mic,
+  Users
 } from 'lucide-react';
 
 export const calculateLevel = (score: number) => {
@@ -68,7 +71,10 @@ export const ICONS = {
   Mute: VolumeX,
   Notification: Bell,
   Security: Fingerprint,
-  Chevron: ChevronRight
+  Chevron: ChevronRight,
+  Live: Radio,
+  Voice: Mic,
+  Users: Users
 };
 
 export const LEVELS = [

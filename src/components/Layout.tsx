@@ -9,9 +9,10 @@ import { Profile } from './Profile';
 import { Settings } from './Settings';
 import { Admin } from './Admin';
 import { RoyalPass } from './RoyalPass';
+import { LiveRooms } from './LiveRooms';
 
 export const Layout: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'home' | 'shop' | 'top' | 'profile' | 'settings' | 'admin' | 'rp'>(() => {
+  const [activeTab, setActiveTab] = useState<'home' | 'shop' | 'top' | 'profile' | 'settings' | 'admin' | 'rp' | 'live'>(() => {
     const savedTab = localStorage.getItem('activeTab');
     return (savedTab as any) || 'home';
   });
@@ -25,7 +26,7 @@ export const Layout: React.FC = () => {
 
   const tabs = [
     { id: 'shop', icon: ICONS.Shop, label: 'SHOP' },
-    { id: 'top', icon: ICONS.Leaderboard, label: 'TOP' },
+    { id: 'live', icon: ICONS.Live, label: 'LIVE' },
     { id: 'home', icon: ICONS.Home, label: 'HOME' },
     { id: 'rp', icon: ICONS.Crown, label: 'PASS' },
     { id: 'profile', icon: ICONS.Profile, label: 'ID' },
@@ -37,13 +38,14 @@ export const Layout: React.FC = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'home': return <Home />;
+      case 'home': return <Home onNavigate={setActiveTab} />;
       case 'shop': return <Shop />;
       case 'top': return <Leaderboard />;
-      case 'profile': return <Profile />;
+      case 'profile': return <Profile onNavigate={setActiveTab} />;
       case 'settings': return <Settings onNavigate={setActiveTab} />;
       case 'admin': return <Admin />;
       case 'rp': return <RoyalPass />;
+      case 'live': return <LiveRooms />;
       default: return <Home />;
     }
   };

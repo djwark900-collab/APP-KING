@@ -8,7 +8,7 @@ interface ProfileProps {
   targetUserId?: string;
 }
 
-export const Profile: React.FC<ProfileProps> = ({ targetUserId }) => {
+export const Profile: React.FC<ProfileProps & { onNavigate?: (tab: 'home' | 'shop' | 'top' | 'profile' | 'settings' | 'admin' | 'rp' | 'live') => void }> = ({ targetUserId, onNavigate }) => {
   const { profile: myProfile, user: currentUser, pendingScore, forceSync, isSyncing, quotaExceeded, frames, skins, rpRewards } = useAuth();
   const [targetProfile, setTargetProfile] = useState<any | null>(null);
   const [isLoadingTarget, setIsLoadingTarget] = useState(false);
@@ -236,6 +236,24 @@ export const Profile: React.FC<ProfileProps> = ({ targetUserId }) => {
                   </div>
                 </div>
               </div>
+              
+              {onNavigate && isViewingSelf && (
+                <button 
+                  onClick={() => onNavigate('top')}
+                  className="w-full mb-6 bg-black/40 border border-white/5 p-4 rounded-xl flex items-center justify-between group active:scale-[0.98] transition-all hover:border-[#F2A900]/30"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-[#F2A900]/10 text-[#F2A900] rounded-lg flex items-center justify-center">
+                      <ICONS.Trophy className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-[10px] font-black text-[#F2A900] uppercase tracking-widest">Global Rankings</div>
+                      <div className="text-white font-black italic uppercase text-sm">View Leaderboard</div>
+                    </div>
+                  </div>
+                  <ICONS.Chevron className="w-5 h-5 text-gray-700 group-hover:text-[#F2A900] transition-colors" />
+                </button>
+              )}
 
               <div className="grid grid-cols-2 gap-4 w-full">
                 <div className="bg-black/50 p-4 rounded-xl border border-[#333] text-center relative overflow-hidden group">

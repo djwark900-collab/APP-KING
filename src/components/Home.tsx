@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { userService } from '../services/userService';
 import { ICONS, THEME, SHORE_ITEMS, calculateLevel, calculateRoyalPass, LEVELS } from '../constants';
 
-export const Home: React.FC = () => {
+export const Home: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'profile' | 'settings' | 'admin' | 'rp' | 'live') => void }> = ({ onNavigate }) => {
   const { profile, user, pendingScore, isSyncing, addScoreLocal, forceSync } = useAuth();
   const [taps, setTaps] = useState<{ id: number; x: number; y: number; rotate: number }[]>([]);
   const [particles, setParticles] = useState<{ id: number; x: number; y: number; vx: number; vy: number }[]>([]);
@@ -119,6 +119,19 @@ export const Home: React.FC = () => {
         )}
       </AnimatePresence>
 
+      {/* Top Left Navigation */}
+      <div className="absolute top-20 left-6 z-20">
+        {onNavigate && (
+          <button 
+            onClick={() => onNavigate('top')}
+            className="flex items-center gap-2 bg-black/60 border border-[#F2A900]/30 rounded-lg p-2 px-3 backdrop-blur-sm hover:border-[#F2A900] transition-all group shadow-lg shadow-black/50"
+          >
+            <ICONS.Trophy className="w-4 h-4 text-[#F2A900] group-hover:scale-110 transition-transform" />
+            <span className="text-[10px] font-black italic uppercase tracking-tighter text-white">TOP</span>
+          </button>
+        )}
+      </div>
+
       {/* Top Bar Stats */}
       <div className="absolute top-20 right-6 flex flex-col items-end gap-3 z-20">
         {creator && (
@@ -145,6 +158,16 @@ export const Home: React.FC = () => {
             </motion.span>
           </div>
         </div>
+
+        {onNavigate && (
+          <button 
+            onClick={() => onNavigate('live')}
+            className="flex items-center gap-2 bg-red-600/20 border border-red-600/40 rounded-lg p-2 px-3 backdrop-blur-sm animate-pulse hover:bg-red-600 hover:text-white transition-all group"
+          >
+            <ICONS.Live className="w-3.5 h-3.5 text-red-500 group-hover:text-white" />
+            <span className="text-[9px] font-black italic uppercase tracking-tighter text-red-500 group-hover:text-white">LIVE NOW</span>
+          </button>
+        )}
       </div>
 
       {/* Royal Pass Bar */}

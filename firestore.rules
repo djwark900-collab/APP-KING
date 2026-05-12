@@ -45,7 +45,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && 
-             (request.auth.token.email == 'traleague@gmail.com' || exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+             (request.auth.token.email == 'traleague@gmail.com' || request.auth.token.email == 'zakho@gmail.com' || exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
     }
 
     // Match users collection
@@ -61,6 +61,42 @@ service cloud.firestore {
                       (!('email' in incoming()) || !('email' in existing()) || incoming().email == existing().email);
       
       allow delete: if isAdmin();
+    }
+
+    // Rooms & Live Sessions
+    match /rooms/{roomId} {
+      allow read: if isSignedIn();
+      
+      allow create: if isSignedIn() && 
+                      incoming().hostId == request.auth.uid &&
+                      isValidRoom(incoming());
+
+      allow update: if isSignedIn() && (
+        // Join/Leave
+        (incoming().diff(existing()).affectedKeys().hasOnly(['participants', 'updatedAt'])) ||
+        // End Room (Host only)
+        (existing().hostId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
+      );
+
+      function isValidRoom(data) {
+        return data.name is string && data.name.size() <= 100 &&
+               data.hostId is string &&
+               data.type in ['voice', 'chat', 'battle'] &&
+               data.status in ['live', 'ended'];
+      }
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && 
+                        incoming().userId == request.auth.uid &&
+                        isValidMessage(incoming());
+
+        function isValidMessage(data) {
+          return data.text is string && data.text.size() <= 500 &&
+                 data.userId is string &&
+                 data.userName is string;
+        }
+      }
     }
 
     // Frames & Skins
