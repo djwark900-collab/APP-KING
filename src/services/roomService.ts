@@ -35,6 +35,8 @@ export interface Message {
   userId: string;
   userName: string;
   text: string;
+  type: 'text' | 'gift';
+  giftId?: string;
   createdAt: any;
 }
 
@@ -92,6 +94,22 @@ export const roomService = {
       userId: user.uid,
       userName: user.displayName || 'Anonymous Player',
       text: text.trim(),
+      type: 'text',
+      createdAt: serverTimestamp(),
+    });
+  },
+
+  async sendGift(roomId: string, giftId: string) {
+    const user = auth.currentUser;
+    if (!user) throw new Error("Authentication required");
+
+    const messagesRef = collection(db, 'rooms', roomId, 'messages');
+    await addDoc(messagesRef, {
+      userId: user.uid,
+      userName: user.displayName || 'Anonymous Player',
+      text: `sent a gift: ${giftId}`,
+      type: 'gift',
+      giftId,
       createdAt: serverTimestamp(),
     });
   },
@@ -128,10 +146,7 @@ export const roomService = {
     const roomRef = doc(db, 'rooms', roomId);
     const snap = await getDoc(roomRef);
     if (snap.exists() && snap.data().hostId === user.uid) {
-      await updateDoc(roomRef, {
-        status: 'ended',
-        updatedAt: serverTimestamp(),
-      });
+      await deleteDoc(roomRef);
     }
   }
 };

@@ -25,8 +25,13 @@ import {
   Fingerprint,
   ChevronRight,
   Radio,
+  MicOff,
   Mic,
-  Users
+  Users,
+  Gift,
+  Heart,
+  Sparkles,
+  Zap as ZapIcon
 } from 'lucide-react';
 
 export const calculateLevel = (score: number) => {
@@ -73,8 +78,13 @@ export const ICONS = {
   Security: Fingerprint,
   Chevron: ChevronRight,
   Live: Radio,
+  LiveOff: MicOff,
   Voice: Mic,
-  Users: Users
+  Users: Users,
+  Gift: Gift,
+  Heart: Heart,
+  Sparkles: Sparkles,
+  ZapIcon: ZapIcon
 };
 
 export const LEVELS = [
