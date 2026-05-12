@@ -27,11 +27,12 @@ export const Admin: React.FC = () => {
     type: 'money', // for RP
     value: 0,     // for RP
     level: 1,      // for RP
-    color: '#F2A900' // for RP
+    color: '#F2A900', // for RP
+    icon: ''
   });
 
   const resetForm = () => {
-    setFormState({ id: '', name: '', cost: '500', image: '', type: 'money', value: 0, level: 1, color: '#F2A900' });
+    setFormState({ id: '', name: '', cost: '500', image: '', type: 'money', value: 0, level: 1, color: '#F2A900', icon: '' });
     setEditingFrame(null);
     setEditingRp(null);
     setEditingSkin(null);
@@ -71,21 +72,20 @@ export const Admin: React.FC = () => {
     e.preventDefault();
     if (activeAdminTab === 'frames' && (!formState.id || !formState.name)) return;
     if (activeAdminTab === 'rp' && !formState.name) return;
+    if (activeAdminTab === 'skins' && (!formState.id || !formState.name)) return;
     
     setLoading(true);
     try {
       if (activeAdminTab === 'rp') {
-        if (formState.image.length > 900000) {
-          throw new Error("Asset data too large (>900KB).");
-        }
-        await userService.updateRpReward(formState.level.toString(), {
+        const levelKey = formState.level.toString();
+        await userService.updateRpReward(levelKey, {
           level: formState.level,
           name: formState.name,
           type: formState.type,
           value: formState.value,
           image: formState.image,
           color: formState.color,
-          icon: formState.type === 'money' ? 'Zap' : formState.type === 'skin' ? 'Flame' : 'Photo'
+          icon: formState.icon || (formState.type === 'money' ? 'Zap' : formState.type === 'skin' ? 'Flame' : 'Photo')
         });
       } else if (activeAdminTab === 'skins') {
         if (formState.image.length > 900000) {
@@ -229,15 +229,19 @@ export const Admin: React.FC = () => {
                activeAdminTab === 'skins' ? 'Deploy new combat gear skins' : 'Manage application creator branding'}
             </p>
           </div>
-          {(activeAdminTab === 'frames' || activeAdminTab === 'skins') && (
+          {(activeAdminTab === 'frames' || activeAdminTab === 'skins' || activeAdminTab === 'rp') && (
             <button 
               onClick={() => {
                 resetForm();
+                if (activeAdminTab === 'rp') {
+                  const maxLvl = rpRewards.length > 0 ? Math.max(...rpRewards.map(r => r.level)) : 0;
+                  setFormState(prev => ({ ...prev, level: maxLvl + 1 }));
+                }
                 setIsModalOpen(true);
               }}
               className="bg-[#F2A900] text-black px-4 py-2 rounded-xl font-black text-[10px] uppercase shadow-lg active:scale-95 transition-all flex items-center gap-2"
             >
-              <ICONS.Plus className="w-3 h-3" /> ADD ASSET
+              <ICONS.Plus className="w-3 h-3" /> {activeAdminTab === 'rp' ? 'ADD TIER' : 'ADD ASSET'}
             </button>
           )}
         </div>
@@ -348,6 +352,7 @@ export const Admin: React.FC = () => {
                         cost: item.cost.toString(), 
                         image: item.image || '',
                         color: item.color || '#F2A900',
+                        icon: item.icon || '',
                         type: 'money',
                         value: 0,
                         level: 1
@@ -400,6 +405,7 @@ export const Admin: React.FC = () => {
                         value: reward.value,
                         image: reward.image || '',
                         color: reward.color || '#F2A900',
+                        icon: reward.icon || '',
                         cost: '0'
                       });
                       setIsModalOpen(true);
@@ -451,6 +457,29 @@ export const Admin: React.FC = () => {
                 <div className="space-y-4">
                   {activeAdminTab === 'rp' ? (
                     <>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Tier Level</label>
+                          <input 
+                            type="number" 
+                            required
+                            disabled={!!editingRp}
+                            value={formState.level}
+                            onChange={e => setFormState({...formState, level: parseInt(e.target.value)})}
+                            className="w-full bg-black border border-white/5 rounded-xl p-3 text-white font-bold outline-none focus:border-[#F2A900] disabled:opacity-50"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Icon Signature</label>
+                          <select 
+                            value={formState.icon || (formState.type === 'money' ? 'Zap' : formState.type === 'skin' ? 'Flame' : 'Photo')}
+                            onChange={e => setFormState({...formState, icon: e.target.value})}
+                            className="w-full bg-black border border-white/5 rounded-xl p-3 text-white font-bold outline-none focus:border-[#F2A900]"
+                          >
+                            {Object.keys(ICONS).map(k => <option key={k} value={k}>{k}</option>)}
+                          </select>
+                        </div>
+                      </div>
                       <div>
                         <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Reward Name</label>
                         <input 

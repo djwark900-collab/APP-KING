@@ -81,10 +81,29 @@ export const RoyalPass: React.FC = () => {
 
       {/* Rewards List */}
       <div className="flex-1 overflow-y-auto px-6 pb-24 space-y-3 custom-scrollbar">
-        <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] mb-4 flex items-center gap-3">
-          <div className="w-8 h-px bg-white/10" /> 
-          Pass Progression 1-25
-        </h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em] flex items-center gap-3">
+            <div className="w-8 h-px bg-white/10" /> 
+            Pass Progression 1-25
+          </h3>
+          {(() => {
+            const unclaimedCount = (rpRewards.length > 0 ? rpRewards : ROYAL_PASS_REWARDS).filter(reward => 
+              rpLevel >= reward.level && !profile?.claimedRpRewards?.includes(reward.level)
+            ).length;
+            
+            if (unclaimedCount > 0) {
+              return (
+                <button 
+                  onClick={() => userService.claimAllAvailableRewards(user!.uid!, profile.level, rpLevel, (rpRewards.length > 0 ? rpRewards : ROYAL_PASS_REWARDS))}
+                  className="text-[9px] font-black uppercase bg-[#F2A900] text-black px-3 py-1 rounded shadow-lg animate-pulse"
+                >
+                  Claim All ({unclaimedCount})
+                </button>
+              );
+            }
+            return null;
+          })()}
+        </div>
         
         {displayRewards.map((reward) => {
           const isUnlocked = rpLevel >= reward.level;

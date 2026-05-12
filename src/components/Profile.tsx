@@ -9,7 +9,7 @@ interface ProfileProps {
 }
 
 export const Profile: React.FC<ProfileProps> = ({ targetUserId }) => {
-  const { profile: myProfile, user: currentUser, pendingScore, forceSync, isSyncing, quotaExceeded, frames, skins } = useAuth();
+  const { profile: myProfile, user: currentUser, pendingScore, forceSync, isSyncing, quotaExceeded, frames, skins, rpRewards } = useAuth();
   const [targetProfile, setTargetProfile] = useState<any | null>(null);
   const [isLoadingTarget, setIsLoadingTarget] = useState(false);
   
@@ -261,9 +261,28 @@ export const Profile: React.FC<ProfileProps> = ({ targetUserId }) => {
       {isViewingSelf && (
         <div className="space-y-8">
           <section>
-            <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-              <ICONS.Zap className="w-3 h-3 text-[#F2A900]" /> LEVEL MILESTONES
-            </h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                <ICONS.Zap className="w-3 h-3 text-[#F2A900]" /> LEVEL MILESTONES
+              </h3>
+              {(() => {
+                const unclaimedCount = Object.keys(LEVEL_REWARDS).filter(lvl => 
+                  level >= parseInt(lvl) && !profile?.claimedLevelRewards?.includes(parseInt(lvl))
+                ).length;
+                
+                if (unclaimedCount > 0 && profile) {
+                  return (
+                    <button 
+                      onClick={() => userService.claimAllAvailableRewards(user!.uid!, level, profile.rpLevel || 1, rpRewards)}
+                      className="text-[9px] font-black uppercase bg-[#F2A900] text-black px-3 py-1 rounded shadow-lg animate-bounce"
+                    >
+                      Claim All ({unclaimedCount})
+                    </button>
+                  );
+                }
+                return null;
+              })()}
+            </div>
             <div className="space-y-2">
               {Object.entries(LEVEL_REWARDS).sort((a,b) => parseInt(a[0]) - parseInt(b[0])).map(([lvlStr, reward]) => {
                 const lvl = parseInt(lvlStr);
@@ -271,11 +290,16 @@ export const Profile: React.FC<ProfileProps> = ({ targetUserId }) => {
                 const isUnlocked = level >= lvl;
                 
                 return (
-                  <div key={lvl} className={`p-4 rounded-xl border flex items-center justify-between transition-all ${
-                    isClaimed ? 'bg-[#F2A900]/5 border-[#F2A900]/20' : 
-                    !isUnlocked ? 'bg-black/30 border-white/5 opacity-50' : 
-                    'bg-white/5 border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)]'
-                  }`}>
+                  <motion.div 
+                    key={lvl} 
+                    whileTap={isUnlocked && !isClaimed ? { scale: 0.98 } : {}}
+                    onClick={() => isUnlocked && !isClaimed && userService.claimLevelReward(user!.uid!, lvl, reward as number)}
+                    className={`p-4 rounded-xl border flex items-center justify-between transition-all ${
+                      isClaimed ? 'bg-[#F2A900]/5 border-[#F2A900]/20' : 
+                      !isUnlocked ? 'bg-black/30 border-white/5 opacity-50' : 
+                      'bg-white/5 border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)] cursor-pointer hover:border-[#F2A900]/40'
+                    }`}
+                  >
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded flex items-center justify-center font-black text-xs border ${
                         isClaimed ? 'bg-[#F2A900] border-black text-black' : 
@@ -302,7 +326,7 @@ export const Profile: React.FC<ProfileProps> = ({ targetUserId }) => {
                     ) : (
                       <div className="text-[10px] font-bold text-gray-800 uppercase">LOCKED</div>
                     )}
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>

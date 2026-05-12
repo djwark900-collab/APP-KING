@@ -264,6 +264,72 @@ export const userService = {
     }
   },
 
+  async claimLevelReward(userId: string, level: number, rewardGold: number) {
+    const path = `users/${userId}`;
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        money: increment(rewardGold),
+        claimedLevelRewards: arrayUnion(level),
+        updatedAt: serverTimestamp(),
+      });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, path);
+    }
+  },
+
+  async claimAllAvailableRewards(userId: string, currentLevel: number, currentRpLevel: number, rpRewards: any[]) {
+    const path = `users/${userId}`;
+    try {
+      const snap = await getDoc(doc(db, 'users', userId));
+      if (!snap.exists()) return;
+      const data = snap.data();
+      
+      const claimedLevels = data.claimedLevelRewards || [];
+      const claimedRp = data.claimedRpRewards || [];
+      
+      let totalGoldGain = 0;
+      const newClaimedLevels: number[] = [];
+      const newClaimedRp: number[] = [];
+      const newOwnedSkins: string[] = [];
+      const newOwnedFrames: string[] = [];
+
+      // Level Rewards
+      for (const [lvlStr, gold] of Object.entries(LEVEL_REWARDS)) {
+        const lvl = parseInt(lvlStr);
+        if (currentLevel >= lvl && !claimedLevels.includes(lvl)) {
+          totalGoldGain += (gold as number);
+          newClaimedLevels.push(lvl);
+        }
+      }
+
+      // RP Rewards
+      for (const reward of rpRewards) {
+        if (currentRpLevel >= reward.level && !claimedRp.includes(reward.level)) {
+          newClaimedRp.push(reward.level);
+          if (reward.type === 'money') totalGoldGain += reward.value;
+          else if (reward.type === 'skin') newOwnedSkins.push(reward.value);
+          else if (reward.type === 'frame') newOwnedFrames.push(reward.value);
+        }
+      }
+
+      if (newClaimedLevels.length === 0 && newClaimedRp.length === 0) return;
+
+      const updates: any = {
+        money: increment(totalGoldGain),
+        updatedAt: serverTimestamp(),
+      };
+
+      if (newClaimedLevels.length > 0) updates.claimedLevelRewards = arrayUnion(...newClaimedLevels);
+      if (newClaimedRp.length > 0) updates.claimedRpRewards = arrayUnion(...newClaimedRp);
+      if (newOwnedSkins.length > 0) updates.ownedSkins = arrayUnion(...newOwnedSkins);
+      if (newOwnedFrames.length > 0) updates.ownedFrames = arrayUnion(...newOwnedFrames);
+
+      await updateDoc(doc(db, 'users', userId), updates);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, path);
+    }
+  },
+
   async updateProfile(userId: string, data: { displayName?: string, photoURL?: string }) {
     const path = `users/${userId}`;
     try {

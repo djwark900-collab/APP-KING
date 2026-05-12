@@ -291,10 +291,10 @@ export const Home: React.FC = () => {
           <button
             onClick={forceSync}
             disabled={isSyncing}
-            className={`flex items-center justify-center gap-2 w-full max-w-sm py-4 rounded-xl font-black uppercase italic tracking-tighter text-sm transition-all shadow-2xl border-2 ${
+            className={`flex items-center justify-center gap-3 w-full max-w-sm py-5 rounded-2xl font-black uppercase italic tracking-tighter text-base transition-all shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-4 ${
               isSyncing 
                 ? 'bg-gray-800 text-gray-500 border-gray-700' 
-                : 'bg-[#F2A900] text-black border-black hover:bg-white hover:-translate-y-1 active:translate-y-0 active:scale-95'
+                : 'bg-[#F2A900] text-black border-black hover:bg-white hover:-translate-y-2 active:translate-y-0 active:scale-95 shadow-[0_10px_20px_rgba(242,169,0,0.3)]'
             }`}
           >
             {isSyncing ? (
@@ -302,12 +302,17 @@ export const Home: React.FC = () => {
                 <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }}>
                   <ICONS.Alert className="w-5 h-5" />
                 </motion.div>
-                Synchronizing Combat Data...
+                SYCHRONIZING...
               </>
             ) : (
               <>
-                <ICONS.Zap className="w-5 h-5" />
-                Save {pendingScore} Progress Points
+                <div className="flex flex-col items-start leading-none">
+                  <span className="text-[10px] opacity-70 mb-1">Unsaved Data Detected</span>
+                  <span className="flex items-center gap-2">
+                    <ICONS.Zap className="w-5 h-5 fill-current" />
+                    SAVE ALL PROGRESS (+{pendingScore})
+                  </span>
+                </div>
               </>
             )}
           </button>
