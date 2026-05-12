@@ -37,7 +37,19 @@ interface FirestoreErrorInfo {
   }
 }
 
+function isQuotaExceeded() {
+  const lastError = localStorage.getItem('quota_error_time');
+  if (!lastError) return false;
+  const lastErrorTime = parseInt(lastError);
+  return (Date.now() - lastErrorTime < 12 * 60 * 60 * 1000);
+}
+
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const err = error as any;
+  if (err?.message?.includes("quota") || err?.code === "resource-exhausted") {
+    localStorage.setItem('quota_error_time', Date.now().toString());
+  }
+  
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
@@ -54,6 +66,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 
 export const userService = {
   async getFrames() {
+    if (isQuotaExceeded()) return JSON.parse(localStorage.getItem('cache_frames') || '[]');
     try {
       const snap = await getDocs(collection(db, 'frames'));
       return snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -64,6 +77,7 @@ export const userService = {
   },
 
   async getSkins() {
+    if (isQuotaExceeded()) return JSON.parse(localStorage.getItem('cache_skins') || '[]');
     try {
       const snap = await getDocs(collection(db, 'skins'));
       return snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -74,6 +88,7 @@ export const userService = {
   },
 
   async getLeaderboard(limitCount: number = 20) {
+    if (isQuotaExceeded()) return JSON.parse(localStorage.getItem('cache_leaderboard') || '[]');
     try {
       const q = query(collection(db, 'users'), orderBy('score', 'desc'), limit(limitCount));
       const snap = await getDocs(q);
@@ -408,6 +423,7 @@ export const userService = {
 
   // Royal Pass Rewards
   async getRpRewards() {
+    if (isQuotaExceeded()) return JSON.parse(localStorage.getItem('cache_rpRewards') || '[]');
     try {
       const q = query(collection(db, 'rp_rewards'), orderBy('level', 'asc'));
       const snap = await getDocs(q);
@@ -444,6 +460,7 @@ export const userService = {
 
   // App Settings / Creator
   async getCreatorInfo() {
+    if (isQuotaExceeded()) return { name: 'TRA LEAGUE', logo: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop' };
     const path = 'app_settings/creator';
     try {
       // Try fetching from server if possible, but handle offline gracefully

@@ -42,15 +42,48 @@ const AuthContext = createContext<AuthContextType>({
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<any | null>(null);
-  const [frames, setFrames] = useState<any[]>([]);
-  const [skins, setSkins] = useState<any[]>([]);
-  const [rpRewards, setRpRewards] = useState<any[]>([]);
-  const [topSurvivors, setTopSurvivors] = useState<any[]>([]);
-  const [rooms, setRooms] = useState<any[]>([]);
-  const [quotaExceeded, setQuotaExceeded] = useState(false);
+  const [profile, setProfile] = useState<any | null>(() => {
+    const cached = localStorage.getItem('cache_profile');
+    return cached ? JSON.parse(cached) : null;
+  });
+  const [frames, setFrames] = useState<any[]>(() => {
+    const cached = localStorage.getItem('cache_frames');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [skins, setSkins] = useState<any[]>(() => {
+    const cached = localStorage.getItem('cache_skins');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [rpRewards, setRpRewards] = useState<any[]>(() => {
+    const cached = localStorage.getItem('cache_rpRewards');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [topSurvivors, setTopSurvivors] = useState<any[]>(() => {
+    const cached = localStorage.getItem('cache_leaderboard');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [rooms, setRooms] = useState<any[]>(() => {
+    const cached = localStorage.getItem('cache_rooms');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [quotaExceeded, setQuotaExceeded] = useState(() => {
+    const lastError = localStorage.getItem('quota_error_time');
+    if (!lastError) return false;
+    const lastErrorTime = parseInt(lastError);
+    // Quota resets daily; if 12h passed or it's a new day, we can try again
+    if (Date.now() - lastErrorTime > 12 * 60 * 60 * 1000) {
+      localStorage.removeItem('quota_error_time');
+      return false;
+    }
+    return true;
+  });
   const [loading, setLoading] = useState(true);
   
+  const handleQuotaError = () => {
+    setQuotaExceeded(true);
+    localStorage.setItem('quota_error_time', Date.now().toString());
+  };
+
   const lastLeaderboardFetchRef = React.useRef<number>(0);
   const [pendingScore, setPendingScore] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -91,6 +124,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       level: calculateLevel(newScore),
       rpLevel: rp.level
     });
+    localStorage.setItem('cache_profile', JSON.stringify({
+      ...oldProfile,
+      score: newScore,
+      level: calculateLevel(newScore),
+      rpLevel: rp.level
+    }));
 
     setIsSyncing(true);
     try {
@@ -107,6 +146,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Fetch static items once on mount instead of using real-time listeners
     const fetchAssets = async () => {
+      // Use cached/default values immediately if quota is exceeded
+      if (quotaExceeded) {
+        if (!frames.length) setFrames(SHORE_ITEMS.frames);
+        if (!skins.length) setSkins(SHORE_ITEMS.skins);
+        if (!rpRewards.length) setRpRewards(ROYAL_PASS_REWARDS);
+        return;
+      }
+
       try {
         const [framesSnap, skinsSnap, rpSnap] = await Promise.all([
           getDocs(collection(db, 'frames')),
@@ -115,6 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ]);
         
         setQuotaExceeded(false);
+        localStorage.removeItem('quota_error_time');
 
         const dbFrames = framesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         const allFrames: any[] = [...SHORE_ITEMS.frames];
@@ -122,6 +170,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (!allFrames.find(af => af.id === df.id)) allFrames.push(df);
         });
         setFrames(allFrames);
+        localStorage.setItem('cache_frames', JSON.stringify(allFrames));
 
         const dbSkins = skinsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         const allSkins: any[] = [...SHORE_ITEMS.skins];
@@ -129,15 +178,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (!allSkins.find(as => as.id === ds.id)) allSkins.push(ds);
         });
         setSkins(allSkins);
+        localStorage.setItem('cache_skins', JSON.stringify(allSkins));
 
         if (!rpSnap.empty) {
-          setRpRewards(rpSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+          const rewards = rpSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setRpRewards(rewards);
+          localStorage.setItem('cache_rpRewards', JSON.stringify(rewards));
         } else {
           setRpRewards(ROYAL_PASS_REWARDS);
+          localStorage.setItem('cache_rpRewards', JSON.stringify(ROYAL_PASS_REWARDS));
         }
       } catch (err: any) {
         console.warn("Assets fetch failed (quota?), using defaults:", err);
-        if (err.message?.includes("quota")) setQuotaExceeded(true);
+        if (err.message?.includes("quota") || err.code === "resource-exhausted") {
+          handleQuotaError();
+        }
         setFrames(SHORE_ITEMS.frames);
         setSkins(SHORE_ITEMS.skins);
         setRpRewards(ROYAL_PASS_REWARDS);
@@ -145,15 +200,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const fetchLeaderboard = async () => {
-      // Cache leaderboard for 5 minutes
-      if (Date.now() - lastLeaderboardFetchRef.current < 5 * 60 * 1000) return;
+      // Block if quota exceeded or we already have recent data
+      if (quotaExceeded || (Date.now() - lastLeaderboardFetchRef.current < 30 * 60 * 1000 && topSurvivors.length > 0)) return;
 
       try {
         const survivors = await userService.getLeaderboard(20);
-        setTopSurvivors(survivors);
+        if (survivors && survivors.length > 0) {
+          setTopSurvivors(survivors);
+          localStorage.setItem('cache_leaderboard', JSON.stringify(survivors));
+        }
         lastLeaderboardFetchRef.current = Date.now();
       } catch (err: any) {
-        if (err.message?.includes("quota")) setQuotaExceeded(true);
+        if (err.message?.includes("quota") || err.code === "resource-exhausted") {
+          handleQuotaError();
+        }
       }
     };
 
@@ -173,17 +233,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (user) {
       const fetchProfile = async () => {
+        if (isCreatingRef.current || quotaExceeded) {
+          if (!profile) setLoading(false);
+          return;
+        }
         try {
           const snap = await getDoc(doc(db, 'users', user.uid));
           if (snap.exists()) {
-            setProfile(snap.data());
+            const data = snap.data();
+            setProfile(data);
+            localStorage.setItem('cache_profile', JSON.stringify(data));
           } else if (!isCreatingRef.current) {
             isCreatingRef.current = true;
             try {
               await userService.createUserProfile(user.uid, user.email || '', user.displayName || 'Survivor');
               const newSnap = await getDoc(doc(db, 'users', user.uid));
               if (newSnap.exists()) {
-                setProfile(newSnap.data());
+                const data = newSnap.data();
+                setProfile(data);
+                localStorage.setItem('cache_profile', JSON.stringify(data));
               }
             } catch (createErr) {
               console.error("Profile creation failed:", createErr);
@@ -192,8 +260,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } catch (err: any) {
           console.warn("Profile fetch failed:", err);
-          if (err.message?.includes("quota")) {
-             // Handle quota exceeded?
+          if (err.message?.includes("quota") || err.code === "resource-exhausted") {
+             handleQuotaError();
           }
         } finally {
           setLoading(false);
@@ -207,16 +275,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
-  // Sync leaderboard when profile score changes significantly (e.g. after a sync)
-  useEffect(() => {
-    if (profile?.score && Date.now() - lastLeaderboardFetchRef.current > 60000) {
-      // Small optimization: Only re-fetch if we haven't in a minute
-      userService.getLeaderboard(20).then(res => {
-        setTopSurvivors(res);
-        lastLeaderboardFetchRef.current = Date.now();
-      }).catch(() => {});
-    }
-  }, [profile?.score]);
+  // Removed redundant leaderboard fetch on score change to save quota
 
     // Periodic Sync & Visibility Change Sync
     useEffect(() => {
@@ -247,7 +306,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const snap = await getDoc(doc(db, 'users', user.uid));
       if (snap.exists()) {
-        setProfile(snap.data());
+        const data = snap.data();
+        setProfile(data);
+        localStorage.setItem('cache_profile', JSON.stringify(data));
       }
     } catch (err) {
       console.warn("Manual profile refresh failed:", err);
@@ -255,9 +316,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Only subscribe to rooms if user is logged in
-    if (!user) {
-      setRooms([]);
+    // Only subscribe to rooms if user is logged in and quota is healthy
+    if (!user || quotaExceeded) {
+      if (!user) setRooms([]);
       return;
     }
 
@@ -272,8 +333,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const liveRooms = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setRooms(liveRooms);
+        localStorage.setItem('cache_rooms', JSON.stringify(liveRooms));
       }, (err: any) => {
-        if (err.message?.includes("quota")) setQuotaExceeded(true);
+        if (err.message?.includes("quota") || err.code === "resource-exhausted") {
+          handleQuotaError();
+        }
       });
 
       return unsubscribe;

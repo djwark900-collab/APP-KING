@@ -7,7 +7,7 @@ import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 export const Admin: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile, quotaExceeded } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const [frames, setFrames] = useState<any[]>([]);
@@ -42,18 +42,30 @@ export const Admin: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isAdmin || quotaExceeded) return;
     
     const unsubR = onSnapshot(query(collection(db, 'rp_rewards'), orderBy('level', 'asc')), (snap) => {
       setRpRewards(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any));
+    }, (err: any) => {
+      if (err.message?.includes("quota") || err.code === "resource-exhausted") {
+        localStorage.setItem('quota_error_time', Date.now().toString());
+      }
     });
 
     const unsubF = onSnapshot(collection(db, 'frames'), (snap) => {
       setFrames(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any));
+    }, (err: any) => {
+      if (err.message?.includes("quota") || err.code === "resource-exhausted") {
+        localStorage.setItem('quota_error_time', Date.now().toString());
+      }
     });
 
     const unsubS = onSnapshot(collection(db, 'skins'), (snap) => {
       setSkins(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any));
+    }, (err: any) => {
+      if (err.message?.includes("quota") || err.code === "resource-exhausted") {
+        localStorage.setItem('quota_error_time', Date.now().toString());
+      }
     });
 
     const fetchCreator = async () => {
