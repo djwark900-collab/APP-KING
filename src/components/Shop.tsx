@@ -6,7 +6,7 @@ import { motion } from 'motion/react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
-export const Shop: React.FC = () => {
+export const Shop: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'profile' | 'settings') => void }> = ({ onNavigate }) => {
   const { profile, user, pendingScore, forceSync, isSyncing, refreshProfile, frames, skins: contextSkins } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -210,7 +210,7 @@ export const Shop: React.FC = () => {
                         if (profile?.money >= boost.cost) {
                           try {
                             await userService.buyMultiplier(user.uid, boost.mult, 1, boost.cost);
-                            alert(`${boost.mult}X Multiplier Engaged!`);
+                            if (onNavigate) onNavigate('home');
                           } catch (e: any) { alert(e.message); }
                         } else { alert("INSUFFICIENT_FUNDS"); }
                       }}

@@ -200,14 +200,25 @@ export const Home: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'prof
         )}
 
         {onNavigate && (
-          <motion.button 
-            whileHover={{ x: 3 }}
-            onClick={() => onNavigate('top')}
-            className="group flex items-center gap-2 bg-black/40 border border-white/5 rounded-lg p-2 backdrop-blur-md shadow-xl hover:border-[#F2A900]/30 transition-all w-fit"
-          >
-            <ICONS.Trophy className="w-3 h-3 text-[#F2A900]" />
-            <span className="text-[8px] font-black italic text-white uppercase">RECORDS</span>
-          </motion.button>
+          <div className="flex flex-col gap-2">
+            <motion.button 
+              whileHover={{ x: 3 }}
+              onClick={() => onNavigate('shop')}
+              className="group flex items-center gap-2 bg-black/40 border border-white/5 rounded-lg p-2 backdrop-blur-md shadow-xl hover:border-yellow-400/30 transition-all w-fit"
+            >
+              <ICONS.Zap className="w-3 h-3 text-yellow-400" />
+              <span className="text-[8px] font-black italic text-white uppercase">SHOP</span>
+            </motion.button>
+
+            <motion.button 
+              whileHover={{ x: 3 }}
+              onClick={() => onNavigate('top')}
+              className="group flex items-center gap-2 bg-black/40 border border-white/5 rounded-lg p-2 backdrop-blur-md shadow-xl hover:border-[#F2A900]/30 transition-all w-fit"
+            >
+              <ICONS.Trophy className="w-3 h-3 text-[#F2A900]" />
+              <span className="text-[8px] font-black italic text-white uppercase">RECORDS</span>
+            </motion.button>
+          </div>
         )}
       </div>
 
@@ -259,7 +270,7 @@ export const Home: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'prof
       {/* Gameplay Core */}
       <div className="flex-1 flex flex-col items-center justify-center relative w-full pt-16">
         {/* Score Readout (Minimal) */}
-        <div className="absolute top-0 flex flex-col items-center">
+        <div className="absolute top-4 flex flex-col items-center">
           <motion.h1 
             key={profile?.score}
             initial={{ scale: 0.95 }}
@@ -270,7 +281,7 @@ export const Home: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'prof
           </motion.h1>
           <div className="flex items-center gap-2 opacity-40">
             <div className="h-[1px] w-4 bg-[#F2A900]" />
-            <span className="text-[6px] font-black text-white uppercase tracking-[0.5em]">RATING</span>
+            <span className="text-[6px] font-black text-white uppercase tracking-[0.5em]">DINNERS</span>
             <div className="h-[1px] w-4 bg-[#F2A900]" />
           </div>
         </div>

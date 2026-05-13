@@ -37,7 +37,7 @@ export const Layout: React.FC = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'home': return <Home onNavigate={setActiveTab} />;
-      case 'shop': return <Shop />;
+      case 'shop': return <Shop onNavigate={setActiveTab} />;
       case 'top': return <Leaderboard />;
       case 'profile': return <Profile onNavigate={setActiveTab} />;
       case 'settings': return <Settings onNavigate={setActiveTab} />;
