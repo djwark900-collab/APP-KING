@@ -2,11 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
 import { userService } from '../services/userService';
-import { roomService, Room } from '../services/roomService';
 import { ICONS, THEME, SHORE_ITEMS, calculateLevel, calculateRoyalPass, LEVELS } from '../constants';
 
-export const Home: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'profile' | 'settings' | 'admin' | 'rp' | 'live') => void }> = ({ onNavigate }) => {
-  const { profile, user, pendingScore, isSyncing, addScoreLocal, forceSync, rooms } = useAuth();
+export const Home: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'profile' | 'settings' | 'admin' | 'rp') => void }> = ({ onNavigate }) => {
+  const { profile, user, pendingScore, isSyncing, addScoreLocal, forceSync } = useAuth();
   const [taps, setTaps] = useState<{ id: number; x: number; y: number; rotate: number }[]>([]);
   const [particles, setParticles] = useState<{ id: number; x: number; y: number; vx: number; vy: number }[]>([]);
   const [shockwaves, setShockwaves] = useState<{ id: number; x: number; y: number }[]>([]);
@@ -165,29 +164,6 @@ export const Home: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'prof
             </motion.span>
           </div>
         </div>
-
-        {onNavigate && (
-          <button 
-            onClick={() => onNavigate('live')}
-            className={`flex items-center gap-2 border rounded-lg p-2 px-3 backdrop-blur-sm transition-all group ${
-              rooms.length > 0 
-                ? 'bg-red-600/20 border-red-600/40 animate-pulse hover:bg-red-600 hover:text-white' 
-                : 'bg-black/40 border-white/5 hover:border-gray-500'
-            }`}
-          >
-            {rooms.length > 0 ? (
-              <>
-                <ICONS.Live className="w-3.5 h-3.5 text-red-500 group-hover:text-white" />
-                <span className="text-[9px] font-black italic uppercase tracking-tighter text-red-500 group-hover:text-white">LIVE NOW</span>
-              </>
-            ) : (
-              <>
-                <ICONS.LiveOff className="w-3.5 h-3.5 text-gray-500 group-hover:text-white" />
-                <span className="text-[9px] font-black italic uppercase tracking-tighter text-gray-500 group-hover:text-white">OFF AIR</span>
-              </>
-            )}
-          </button>
-        )}
       </div>
 
       {/* Royal Pass Bar */}

@@ -24,13 +24,6 @@ import {
   Bell,
   Fingerprint,
   ChevronRight,
-  Radio,
-  MicOff,
-  Mic,
-  Users,
-  Gift,
-  Heart,
-  Sparkles,
   Zap as ZapIcon
 } from 'lucide-react';
 
@@ -77,15 +70,6 @@ export const ICONS = {
   Notification: Bell,
   Security: Fingerprint,
   Chevron: ChevronRight,
-  Live: Radio,
-  LiveOff: MicOff,
-  MicOff: MicOff,
-  Mic: Mic,
-  Voice: Mic,
-  Users: Users,
-  Gift: Gift,
-  Heart: Heart,
-  Sparkles: Sparkles,
   ZapIcon: ZapIcon
 };
 

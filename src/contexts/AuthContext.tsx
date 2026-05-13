@@ -3,7 +3,6 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db, isQuotaExceeded, handleFirestoreError, OperationType } from '../lib/firebase';
 import { doc, onSnapshot, collection, getDocs, getDoc, query, where, orderBy, limit } from 'firebase/firestore';
 import { userService } from '../services/userService';
-import { roomService } from '../services/roomService';
 import { SHORE_ITEMS, ROYAL_PASS_REWARDS, calculateLevel, calculateRoyalPass } from '../constants';
 
 interface AuthContextType {
@@ -21,7 +20,6 @@ interface AuthContextType {
   skins: any[];
   rpRewards: any[];
   topSurvivors: any[];
-  rooms: any[];
   quotaExceeded: boolean;
 }
 
@@ -40,7 +38,6 @@ const AuthContext = createContext<AuthContextType>({
   skins: [],
   rpRewards: [],
   topSurvivors: [],
-  rooms: [],
   quotaExceeded: false
 });
 
@@ -64,10 +61,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
   const [topSurvivors, setTopSurvivors] = useState<any[]>(() => {
     const cached = localStorage.getItem('cache_leaderboard');
-    return cached ? JSON.parse(cached) : [];
-  });
-  const [rooms, setRooms] = useState<any[]>(() => {
-    const cached = localStorage.getItem('cache_rooms');
     return cached ? JSON.parse(cached) : [];
   });
   const [quotaExceeded, setQuotaExceeded] = useState(() => isQuotaExceeded());
@@ -335,37 +328,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  useEffect(() => {
-    // Only subscribe to rooms if user is logged in and quota is healthy
-    if (!user || quotaExceeded) {
-      if (!user) setRooms([]);
-      return;
-    }
-
-    try {
-      const q = query(
-        collection(db, 'rooms'), 
-        where('status', '==', 'live'),
-        orderBy('createdAt', 'desc'), 
-        limit(20) // Reduced from 50 to 20 to save quota
-      );
-      
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const liveRooms = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setRooms(liveRooms);
-        localStorage.setItem('cache_rooms', JSON.stringify(liveRooms));
-      }, (err: any) => {
-        if (err.message?.includes("quota") || err.code === "resource-exhausted") {
-          handleQuotaError();
-        }
-      });
-
-      return unsubscribe;
-    } catch (err) {
-      console.warn("Room subscription failed:", err);
-    }
-  }, [user, quotaExceeded]);
-
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -382,7 +344,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       skins,
       rpRewards,
       topSurvivors,
-      rooms,
       quotaExceeded
     }}>
       {!loading && children}

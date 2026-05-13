@@ -8,7 +8,7 @@ interface ProfileProps {
   targetUserId?: string;
 }
 
-export const Profile: React.FC<ProfileProps & { onNavigate?: (tab: 'home' | 'shop' | 'top' | 'profile' | 'settings' | 'admin' | 'rp' | 'live') => void }> = ({ targetUserId, onNavigate }) => {
+export const Profile: React.FC<ProfileProps & { onNavigate?: (tab: 'home' | 'shop' | 'top' | 'profile' | 'settings' | 'admin' | 'rp') => void }> = ({ targetUserId, onNavigate }) => {
   const { profile: myProfile, user: currentUser, pendingScore, forceSync, isSyncing, quotaExceeded, frames, skins, rpRewards } = useAuth();
   const [targetProfile, setTargetProfile] = useState<any | null>(null);
   const [isLoadingTarget, setIsLoadingTarget] = useState(false);
