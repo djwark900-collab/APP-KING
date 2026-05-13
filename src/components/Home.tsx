@@ -87,10 +87,14 @@ export const Home: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'prof
   const [prevLevel, setPrevLevel] = useState(level);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [creator, setCreator] = useState<{name: string, logo: string} | null>(null);
+  const [appConfig, setAppConfig] = useState<{ homeBackground?: string }>({});
 
   useEffect(() => {
     userService.getCreatorInfo().then(info => {
       if (info) setCreator({ name: info.name || '', logo: info.logo || '' });
+    });
+    userService.getAppConfig().then(config => {
+      if (config) setAppConfig(config);
     });
   }, []);
 
@@ -105,170 +109,241 @@ export const Home: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'prof
   const currentLevelRank = LEVELS.findLast(l => level >= l.min) || LEVELS[0];
 
   return (
-    <div className="h-full flex flex-col items-center justify-center p-8 relative overflow-hidden bg-cover bg-center"
-         style={{ backgroundImage: `linear-gradient(rgba(15,15,15,0.8), rgba(15,15,15,0.8)), url('https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&q=80')` }}>
+    <div className="h-full flex flex-col items-center justify-center p-8 relative overflow-hidden bg-cover bg-center font-mono selection:bg-[#F2A900] selection:text-black"
+         style={{ backgroundImage: `linear-gradient(rgba(7,7,7,0.85), rgba(7,7,7,1)), url('${appConfig.homeBackground || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&q=80'}')` }}>
       
+      {/* Background FX Layers */}
+      <div className="absolute inset-0 bg-noise opacity-[0.03] pointer-events-none mix-blend-overlay" />
+      <div className="absolute inset-0 bg-scanline opacity-[0.05] pointer-events-none" />
+      
+      {/* Tactical Grid Overlay with Flicker */}
+      <div className="absolute inset-0 opacity-[0.07] pointer-events-none animate-[flicker_8s_infinite]" 
+           style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(242,169,0,0.4) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+      
+      {/* Dynamic Vignette */}
+      <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_150px_rgba(0,0,0,0.8)]" />
+
+      {/* Radar Scanning Line */}
+      <motion.div 
+        animate={{ top: ['-10%', '110%'] }}
+        transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+        className="absolute left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#F2A900]/10 to-transparent z-0 pointer-events-none"
+      />
+
       {/* Level Up Notification */}
       <AnimatePresence>
         {showLevelUp && (
           <motion.div
-            initial={{ opacity: 0, y: -100, scale: 0.5 }}
-            animate={{ opacity: 1, y: 100, scale: 1 }}
-            exit={{ opacity: 0, scale: 2 }}
-            className="fixed top-0 left-0 right-0 z-[100] flex flex-col items-center pointer-events-none"
+            initial={{ opacity: 0, scale: 0.8, y: 0 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 1.2 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none px-4"
           >
-            <div className="bg-[#F2A900] text-black px-8 py-4 rounded-2xl shadow-[0_0_50px_rgba(242,169,0,0.5)] border-4 border-black">
-              <h1 className="text-4xl font-black italic uppercase tracking-tighter">Level Up!</h1>
-              <p className="text-center font-black">Combat Level {level}</p>
+            <div className="bg-black/95 border-y border-[#F2A900] w-full py-16 flex flex-col items-center backdrop-blur-2xl relative overflow-hidden">
+               <div className="absolute inset-0 bg-[#F2A900]/5 animate-pulse" />
+               <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#F2A900] to-transparent" />
+               <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#F2A900] to-transparent" />
+               
+               <motion.div 
+                 animate={{ opacity: [0.3, 1, 0.3] }}
+                 transition={{ duration: 1.5, repeat: Infinity }}
+                 className="text-[#F2A900] text-[8px] font-black tracking-[0.8em] mb-6 uppercase"
+               >
+                 AUTHORIZED PERSONNEL ONLY
+               </motion.div>
+               <h1 className="text-5xl font-black italic uppercase tracking-tighter text-white drop-shadow-[0_0_40px_rgba(242,169,0,0.6)]">PROMOTED</h1>
+               <div className="flex items-center gap-6 mt-6">
+                 <div className="h-[2px] w-16 bg-gradient-to-r from-transparent to-[#F2A900]/40" />
+                 <p className="text-2xl font-black text-[#F2A900] uppercase italic tracking-widest">LVL {level}</p>
+                 <div className="h-[2px] w-16 bg-gradient-to-l from-transparent to-[#F2A900]/40" />
+               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Top Left Navigation */}
-      <div className="absolute top-20 left-6 z-20">
+      {/* HUD: Left - Rank (Compact) */}
+      <div className="absolute top-20 left-4 z-20 flex flex-col gap-3">
         {onNavigate && (
-          <button 
+          <motion.button 
+            whileHover={{ x: 3 }}
             onClick={() => onNavigate('top')}
-            className="flex items-center gap-2 bg-black/60 border border-[#F2A900]/30 rounded-lg p-2 px-3 backdrop-blur-sm hover:border-[#F2A900] transition-all group shadow-lg shadow-black/50"
+            className="group flex items-center gap-2.5 bg-black/80 border border-white/5 rounded-lg p-2.5 backdrop-blur-md shadow-xl hover:border-[#F2A900]/30 transition-all"
           >
-            <ICONS.Trophy className="w-4 h-4 text-[#F2A900] group-hover:scale-110 transition-transform" />
-            <span className="text-[10px] font-black italic uppercase tracking-tighter text-white">TOP</span>
-          </button>
+            <ICONS.Trophy className="w-4 h-4 text-[#F2A900]" />
+            <div className="flex flex-col items-start leading-none">
+              <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest">Ranking</span>
+              <span className="text-[10px] font-black italic text-white uppercase">SURVIVORS</span>
+            </div>
+          </motion.button>
         )}
       </div>
 
-      {/* Top Bar Stats */}
-      <div className="absolute top-20 right-6 flex flex-col items-end gap-3 z-20">
-        {creator && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center gap-2 mb-1 opacity-20 hover:opacity-100 transition-opacity translate-x-2"
-          >
-            <span className="text-[7px] font-black uppercase tracking-[0.3em] text-white">Creator: {creator.name}</span>
-            {creator.logo && <img src={creator.logo} alt="" className="w-4 h-4 rounded object-contain bg-white/10" referrerPolicy="no-referrer" />}
-          </motion.div>
-        )}
-        <div className="bg-black/60 border border-[#F2A900]/30 rounded-lg p-2 px-3 flex items-center gap-2 backdrop-blur-sm shadow-lg shadow-black/50">
-          <ICONS.Zap className="w-4 h-4 text-[#F2A900] animate-pulse" />
-          <div className="text-[10px] font-black italic uppercase tracking-tighter">
-            Gold: 
+      {/* HUD: Right - Economy (Compact) */}
+      <div className="absolute top-20 right-4 flex flex-col items-end gap-3 z-20">
+        <div className="bg-black/80 border border-white/5 rounded-lg p-2.5 pr-4 flex items-center gap-3 backdrop-blur-md shadow-xl">
+          <div className="w-8 h-8 bg-[#F2A900]/5 rounded flex items-center justify-center border border-[#F2A900]/10">
+            <ICONS.Zap className="w-4 h-4 text-[#F2A900] animate-pulse" />
+          </div>
+          <div className="flex flex-col items-start leading-none">
+            <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Gold</span>
             <motion.span 
               key={profile?.money}
-              initial={{ scale: 1.5, color: '#F2A900' }}
-              animate={{ scale: 1, color: '#FFFFFF' }}
-              className="ml-1 text-white text-xs inline-block"
+              className="text-lg font-black italic text-white"
             >
-              {profile?.money || 0}
+              {profile?.money?.toLocaleString() || 0}
             </motion.span>
           </div>
         </div>
-      </div>
 
-      {/* Royal Pass Bar */}
-      <div className="absolute top-4 left-6 right-6 z-10">
-        <div className="flex justify-between items-end mb-1">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black text-[#F2A900] italic uppercase tracking-tighter">Royal Pass S1</span>
-            {isBoostActive && (
-              <motion.span 
-                animate={{ opacity: [1, 0.5, 1] }}
-                transition={{ duration: 1, repeat: Infinity }}
-                className="bg-[#F2A900] text-black text-[7px] font-black px-1.5 py-0.5 rounded flex items-center gap-1 shadow-[0_0_10px_#F2A900]"
-              >
-                2X • {formatTime(timeLeft)}
-              </motion.span>
-            )}
-          </div>
-          <span className="text-xs font-black italic">LVL {rpLevel}</span>
-        </div>
-        <div className="h-2 bg-black/50 rounded-full overflow-hidden border border-white/5">
+        {isBoostActive && (
           <motion.div 
-            initial={{ width: 0 }}
-            animate={{ width: `${rpProgress}%` }}
-            className="h-full bg-gradient-to-r from-[#F2A900] to-[#FFD700] shadow-[0_0_10px_rgba(242,169,0,0.5)]" 
-          />
-        </div>
-      </div>
-
-      <div className="absolute top-20 text-center">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <h2 className="text-gray-400 font-black uppercase tracking-widest text-xs">Chicken Dinners</h2>
-          <motion.div
-            animate={{ 
-              opacity: isSyncing ? [0.4, 1, 0.4] : [0.3, 1, 0.3],
-              scale: isSyncing ? [1, 1.2, 1] : 1
-            }}
-            transition={{ duration: isSyncing ? 0.5 : 2, repeat: Infinity }}
+            initial={{ x: 10, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            className="bg-red-600/10 border border-red-600/30 rounded-lg p-1.5 px-3 backdrop-blur-sm flex items-center gap-2.5"
           >
-            <ICONS.Flame className={`w-3 h-3 ${isSyncing ? 'text-white' : 'text-[#F2A900]'}`} />
+            <ICONS.Zap className="w-3 h-3 text-red-500 animate-bounce" />
+            <div className="flex flex-col items-start">
+              <span className="text-[11px] font-black italic text-red-500 leading-none">{multiplier}X ACTIVE</span>
+              <span className="text-[7px] font-mono text-white/50">{formatTime(timeLeft)}</span>
+            </div>
           </motion.div>
-        </div>
-        <div className="text-6xl font-black text-white italic drop-shadow-[0_2px_10px_rgba(242,169,0,0.5)] flex items-center justify-center gap-4">
-          {((profile?.score || 0) + pendingScore).toLocaleString() || 0}
-          {isSyncing && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="absolute -right-12"
-            >
-              <ICONS.Alert className="w-6 h-6 text-[#F2A900] animate-spin" />
-            </motion.div>
-          )}
-        </div>
-        {isSyncing && (
-           <motion.p 
-             initial={{ opacity: 0 }}
-             animate={{ opacity: 1 }}
-             className="text-[8px] font-black text-[#F2A900] uppercase tracking-[0.2em] mt-2"
-           >
-             Auto-Saving Progress...
-           </motion.p>
         )}
       </div>
 
-      <motion.button
-        onMouseDown={handleTap}
-        onTouchStart={handleTap}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.96, y: 4 }}
-        transition={{ type: "spring", stiffness: 400, damping: 17 }}
-        className="group relative w-64 h-64 rounded-full flex items-center justify-center transition-shadow bg-transparent border-none active:outline-none focus:outline-none"
-      >
-        {/* Glow Effect */}
-        <div className="absolute inset-0 bg-[#F2A900] rounded-full opacity-10 blur-3xl group-active:opacity-40 transition-opacity" />
-        
-        {/* Main Circle Hardware Look */}
-        <div className="absolute inset-4 border-[12px] border-[#222] rounded-full group-active:border-[#F2A900] shadow-inner transition-colors" />
-        <div className="absolute inset-2 border border-[#F2A900]/20 rounded-full animate-[pulse_3s_infinite]" />
-        
-        {/* Decorative Internal Ring */}
-        <div className="absolute inset-10 border-2 border-dashed border-[#333] rounded-full opacity-50" />
+      {/* Center HUD: Season Progress */}
+      <div className="absolute top-4 left-4 right-4 z-10">
+        <div className="bg-black/40 border border-white/5 rounded-2xl p-3 px-4 backdrop-blur-xl relative overflow-hidden group">
+          <div className="absolute inset-0 bg-scanline opacity-[0.03] pointer-events-none" />
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 bg-gradient-to-br from-[#F2A900] to-[#8B0000] rounded-md flex items-center justify-center shadow-lg">
+                <ICONS.Crown className="w-4 h-4 text-black" />
+              </div>
+              <div>
+                <h3 className="text-[11px] font-black italic text-white leading-none">S1 SURVIVAL</h3>
+                <div className="text-[6px] font-black text-[#F2A900] uppercase tracking-[0.2em] mt-1">LVL {rpLevel} PROG</div>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest block">RP XP</span>
+              <span className="text-[12px] font-black italic text-white leading-none">{rpProgress}%</span>
+            </div>
+          </div>
+          
+          <div className="h-1 bg-black rounded-full overflow-hidden border border-white/5 relative">
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: `${rpProgress}%` }}
+              className="h-full bg-gradient-to-r from-[#F2A900] to-[#FFD700] rounded-full relative" 
+            />
+          </div>
+        </div>
+      </div>
 
-        {/* Skin Display */}
-        <motion.div
-          animate={{ y: [0, -8, 0] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          className="relative z-10 flex flex-col items-center"
-        >
-          {currentSkin.image ? (
-            <img src={currentSkin.image} alt="" className="w-48 h-48 object-contain drop-shadow-[0_10px_30px_rgba(242,169,0,0.4)]" referrerPolicy="no-referrer" />
-          ) : (
-            <SkinIcon className="w-32 h-32 text-[#F2A900] drop-shadow-[0_0_20px_rgba(242,169,0,0.6)]" />
+      {/* Gameplay Core */}
+      <div className="flex-1 flex flex-col items-center justify-center relative w-full pt-16">
+        {/* Score Readout (Soul/Dynamic) */}
+        <div className="absolute top-8 flex flex-col items-center">
+          <div className="opacity-30 mb-2 flex flex-col items-center">
+            <span className="text-[7px] font-black text-white uppercase tracking-[0.8em]">COMBAT RATING</span>
+          </div>
+          
+          <div className="relative group cursor-default">
+            <h1 className="text-7xl font-black text-white italic tracking-tighter drop-shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-transform duration-700 group-hover:scale-105">
+              {((profile?.score || 0) + pendingScore).toLocaleString() || 0}
+            </h1>
+            <div className="absolute inset-0 blur-2xl bg-[#F2A900]/5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+          
+          {isSyncing && (
+             <p className="text-[7px] font-black text-[#F2A900] uppercase tracking-[0.5em] mt-3 animate-pulse">
+               UPLOADING_DATA...
+             </p>
           )}
-          <span className="mt-4 text-[9px] font-black uppercase tracking-[0.3em] text-[#F2A900] opacity-40">{currentSkin.name}</span>
-        </motion.div>
-      </motion.button>
+        </div>
 
-      {/* Floating Elements (Shockwaves, Particles, +1s) */}
+        {/* Tactical Interaction Port (Button) */}
+        <motion.button
+          onMouseDown={handleTap}
+          onTouchStart={handleTap}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.94, y: 5 }}
+          className="group relative w-64 h-64 flex items-center justify-center bg-transparent transition-all outline-none"
+        >
+          {/* Hardware Frame UI */}
+          <div className="absolute inset-0 bg-stone-900/10 rounded-[3rem] border border-white/5 backdrop-blur-sm" />
+          
+          {/* Animated Tech Rings */}
+          <div className="absolute inset-[-8px] border-2 border-[#F2A900]/10 rounded-[3.5rem] animate-[flicker_10s_infinite]" />
+          <div className="absolute inset-[-15px] border border-white/5 rounded-[4rem] animate-pulse opacity-20" />
+
+          {/* Interactive Core */}
+          <div className="absolute inset-1.5 bg-gradient-to-br from-[#111] to-[#010101] rounded-[2.8rem] border-2 border-white/5 shadow-2xl transition-colors group-hover:border-[#F2A900]/20">
+             <div className="absolute inset-0 bg-black/60 group-active:bg-[#F2A900]/5 transition-colors" />
+             
+             {/* Corner Markers */}
+             <div className="absolute top-3 left-3 w-1.5 h-1.5 border-t border-l border-[#F2A900]/40" />
+             <div className="absolute top-3 right-3 w-1.5 h-1.5 border-t border-r border-[#F2A900]/40" />
+             <div className="absolute bottom-3 left-3 w-1.5 h-1.5 border-b border-l border-[#F2A900]/40" />
+             <div className="absolute bottom-3 right-3 w-1.5 h-1.5 border-b border-r border-[#F2A900]/40" />
+          </div>
+
+          {/* Asset/Skin Display */}
+          <motion.div
+            animate={{ 
+              y: [0, -6, 0],
+              filter: ["brightness(1)", "brightness(1.1)", "brightness(1)"]
+            }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+            className="relative z-10 flex flex-col items-center"
+          >
+            <div className="relative group-active:scale-90 transition-transform duration-75">
+              <div className="absolute inset-0 bg-[#F2A900] blur-[40px] opacity-[0.08] group-hover:opacity-20 transition-opacity" />
+              {currentSkin.image ? (
+                <img src={currentSkin.image} alt="" className="w-48 h-48 object-contain drop-shadow-[0_15px_30px_rgba(0,0,0,0.6)] relative z-10" referrerPolicy="no-referrer" />
+              ) : (
+                <SkinIcon className="w-32 h-32 text-[#F2A900] drop-shadow-[0_0_20px_rgba(242,169,0,0.3)] relative z-10" />
+              )}
+            </div>
+            <div className="mt-4 flex flex-col items-center">
+               <span className="text-[8px] font-black uppercase tracking-[0.5em] text-white/40 group-hover:text-[#F2A900]/60 transition-colors">{currentSkin.name}</span>
+            </div>
+          </motion.div>
+        </motion.button>
+      </div>
+
+      {/* Footer Info (Small/Compact) */}
+      <div className="absolute bottom-8 w-full px-8 flex items-center justify-between z-20">
+        <div className="flex gap-3">
+           <div className="bg-black/80 border-l border-[#F2A900] border-y border-white/5 border-r border-white/5 px-4 py-2 rounded-r-lg flex flex-col items-start backdrop-blur-md shadow-xl">
+              <span className="text-[11px] font-black italic text-white leading-none mb-0.5">LVL {level}</span>
+              <span className="text-[6px] font-black text-gray-500 uppercase tracking-widest">{currentLevelRank.rank}</span>
+           </div>
+        </div>
+
+        {pendingScore > 0 && (
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={forceSync}
+            className="flex items-center gap-3 bg-[#F2A900] text-black p-2 px-4 rounded-lg font-black uppercase text-[9px] shadow-lg shadow-[#F2A900]/10 hover:bg-white transition-colors"
+          >
+            <ICONS.Zap className="w-3 h-3" />
+            <span>SYNC PROGRESS</span>
+          </motion.button>
+        )}
+      </div>
+
+      {/* Tactical Feedback Particles */}
       <AnimatePresence>
         {shockwaves.map(sw => (
           <motion.div
             key={sw.id}
             initial={{ opacity: 1, scale: 0.5 }}
-            animate={{ opacity: 0, scale: 3 }}
-            className="fixed pointer-events-none z-40 w-16 h-16 rounded-full border-2 border-[#F2A900]/30 shadow-[0_0_20px_rgba(242,169,0,0.2)]"
+            animate={{ opacity: 0, scale: 4 }}
+            className="fixed pointer-events-none z-40 w-16 h-16 rounded-full border border-[#F2A900]/50"
             style={{ left: sw.x - 32, top: sw.y - 32 }}
           />
         ))}
@@ -279,73 +354,27 @@ export const Home: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'prof
             initial={{ opacity: 1, x: p.x, y: p.y }}
             animate={{ 
               opacity: 0, 
-              x: p.x + p.vx * 10, 
-              y: p.y + p.vy * 10,
+              x: p.x + p.vx * 15, 
+              y: p.y + p.vy * 15,
               scale: 0
             }}
-            className="fixed pointer-events-none z-40 w-1.5 h-1.5 bg-[#F2A900] rounded-full shadow-[0_0_8px_#F2A900]"
+            className="fixed pointer-events-none z-40 w-1 h-1 bg-[#F2A900] rounded-sm transform rotate-45"
           />
         ))}
 
         {taps.map(tap => (
           <motion.div
             key={tap.id}
-            initial={{ opacity: 1, y: tap.y - 40, x: tap.x - 20, scale: 0.5, rotate: tap.rotate }}
-            animate={{ opacity: 0, y: tap.y - 180, scale: 1.5 }}
+            initial={{ opacity: 0, y: tap.y, x: tap.x - 20, scale: 0.5 }}
+            animate={{ opacity: 1, y: tap.y - 120, scale: 1.5 }}
             exit={{ opacity: 0 }}
-            className="fixed pointer-events-none z-50 text-4xl font-black italic text-[#F2A900] drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]"
+            className="fixed pointer-events-none z-50 flex items-center gap-1"
           >
-            +{isBoostActive ? 2 : 1}
+            <span className="text-4xl font-black italic text-[#F2A900] drop-shadow-[0_0_15px_rgba(0,0,0,1)]">+{multiplier}</span>
+            <ICONS.Zap className="w-6 h-6 text-[#F2A900] fill-current drop-shadow-[0_0_10px_rgba(242,169,0,0.5)]" />
           </motion.div>
         ))}
       </AnimatePresence>
-
-      {/* Manual Sync Button */}
-      {pendingScore > 0 && (
-        <motion.div 
-          initial={{ y: 50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="absolute bottom-24 z-50 px-6 w-full flex justify-center"
-        >
-          <button
-            onClick={forceSync}
-            disabled={isSyncing}
-            className={`flex items-center justify-center gap-3 w-full max-w-sm py-5 rounded-2xl font-black uppercase italic tracking-tighter text-base transition-all shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-4 ${
-              isSyncing 
-                ? 'bg-gray-800 text-gray-500 border-gray-700' 
-                : 'bg-[#F2A900] text-black border-black hover:bg-white hover:-translate-y-2 active:translate-y-0 active:scale-95 shadow-[0_10px_20px_rgba(242,169,0,0.3)]'
-            }`}
-          >
-            {isSyncing ? (
-              <>
-                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }}>
-                  <ICONS.Alert className="w-5 h-5" />
-                </motion.div>
-                SYCHRONIZING...
-              </>
-            ) : (
-              <>
-                <div className="flex flex-col items-start leading-none">
-                  <span className="text-[10px] opacity-70 mb-1">Unsaved Data Detected</span>
-                  <span className="flex items-center gap-2">
-                    <ICONS.Zap className="w-5 h-5 fill-current" />
-                    SAVE ALL PROGRESS (+{pendingScore})
-                  </span>
-                </div>
-              </>
-            )}
-          </button>
-        </motion.div>
-      )}
-
-      <div className="absolute bottom-10 flex gap-2">
-        <div className="bg-black/50 border border-[#333] font-black uppercase tracking-widest text-[10px] py-1 px-3 rounded-full">
-          Level {level}
-        </div>
-        <div className="bg-black/50 border border-[#333] font-black uppercase tracking-widest text-[10px] py-1 px-3 rounded-full">
-          Tier: {currentLevelRank.rank}
-        </div>
-      </div>
     </div>
   );
 };

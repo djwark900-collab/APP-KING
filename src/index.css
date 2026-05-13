@@ -2,6 +2,34 @@
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+@keyframes flicker {
+  0% { opacity: 0.1; }
+  5% { opacity: 0.15; }
+  10% { opacity: 0.1; }
+  15% { opacity: 0.2; }
+  20% { opacity: 0.1; }
+  100% { opacity: 0.1; }
+}
+
+.bg-scanline {
+  background: linear-gradient(
+    to bottom,
+    transparent 50%,
+    rgba(0, 0, 0, 0.4) 50%
+  );
+  background-size: 100% 4px;
+}
+
+.bg-noise {
+  background-image: url('https://grainy-gradients.vercel.app/noise.svg');
 }
 
 body {

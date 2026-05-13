@@ -46,6 +46,16 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "email", "score"]
+    },
+    "AppSettings": {
+      "title": "AppSettings",
+      "type": "object",
+      "properties": {
+        "homeBackground": { "type": "string" },
+        "creatorName": { "type": "string" },
+        "creatorLogo": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "firestore": {
@@ -60,6 +70,10 @@
     "/skins/{skinId}": {
       "schema": "Skin",
       "description": "Available tapper skins."
+    },
+    "/app_settings/{settingId}": {
+      "schema": "AppSettings",
+      "description": "Global application configuration."
     }
   }
 }

@@ -139,6 +139,9 @@ export const ROYAL_PASS_REWARDS = [
 export const SHORE_ITEMS = {
   frames: [
     { id: 'none', name: 'No Frame', cost: 0, image: null },
+    { id: 'frame1', name: 'Survivor Frame', cost: 100, image: 'https://images.unsplash.com/photo-1614850523296-d8c1af93d400?w=100&h=100&fit=crop' },
+    { id: 'frame2', name: 'Tactical Frame', cost: 200, image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&h=100&fit=crop' },
+    { id: 'frame3', name: 'Elite Frame', cost: 300, image: 'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=100&h=100&fit=crop' },
     { id: 'bronze_frame', name: 'Bronze Frame', cost: 50, image: 'https://images.unsplash.com/photo-1548685913-fe657448d313?w=100&h=100&fit=crop' },
     { id: 'silver_frame', name: 'Silver Frame', cost: 200, image: 'https://images.unsplash.com/photo-1596464716127-f2a82984de30?w=100&h=100&fit=crop' },
     { id: 'gold_frame', name: 'Gold Frame', cost: 800, image: 'https://images.unsplash.com/photo-1589182373726-e4f648ab50f0?w=100&h=100&fit=crop' },

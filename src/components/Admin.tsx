@@ -20,8 +20,9 @@ export const Admin: React.FC = () => {
   const [editingFrame, setEditingFrame] = useState<any>(null);
   const [editingRp, setEditingRp] = useState<any>(null);
   const [editingSkin, setEditingSkin] = useState<any>(null);
-  const [activeAdminTab, setActiveAdminTab] = useState<'frames' | 'rp' | 'skins' | 'creator'>('frames');
+  const [activeAdminTab, setActiveAdminTab] = useState<'frames' | 'rp' | 'skins' | 'settings' | 'collector'>('frames');
   const [creatorInfo, setCreatorInfo] = useState({ name: '', logo: '' });
+  const [appConfig, setAppConfig] = useState({ homeBackground: '' });
   const [formState, setFormState] = useState({ 
     id: '', 
     name: '', 
@@ -68,11 +69,13 @@ export const Admin: React.FC = () => {
       }
     });
 
-    const fetchCreator = async () => {
+    const fetchConfig = async () => {
       const info = await userService.getCreatorInfo();
       if (info) setCreatorInfo({ name: info.name || '', logo: info.logo || '' });
+      const config = await userService.getAppConfig();
+      if (config) setAppConfig({ homeBackground: config.homeBackground || '' });
     };
-    fetchCreator();
+    fetchConfig();
 
     return () => {
       unsubR();
@@ -81,12 +84,21 @@ export const Admin: React.FC = () => {
     };
   }, [isAdmin, quotaExceeded]);
 
-  const handleSaveCreator = async (e: React.FormEvent) => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
+      // Validate sizes
+      if (creatorInfo.logo.length > 900000) {
+        throw new Error(`Creator logo too large (${(creatorInfo.logo.length / 1024 / 1024).toFixed(2)}MB). Maximum allowed is 0.9MB. Use a URL instead.`);
+      }
+      if (appConfig.homeBackground.length > 900000) {
+        throw new Error(`Background image too large (${(appConfig.homeBackground.length / 1024 / 1024).toFixed(2)}MB). Maximum allowed is 0.9MB. Use a URL instead.`);
+      }
+
       await userService.updateCreatorInfo(creatorInfo);
-      alert("Creator credentials updated successfully.");
+      await userService.updateAppConfig(appConfig);
+      alert("Application settings synchronized successfully.");
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -102,6 +114,11 @@ export const Admin: React.FC = () => {
     
     setLoading(true);
     try {
+      // Global image size check
+      if (formState.image && formState.image.startsWith('data:') && formState.image.length > 900000) {
+        throw new Error(`Asset data too large (${(formState.image.length / 1024 / 1024).toFixed(2)}MB). Maximum allowed for direct upload is 0.9MB. Please use a URL instead for high-res GIFs.`);
+      }
+
       if (activeAdminTab === 'rp') {
         const levelKey = formState.level.toString();
         await userService.updateRpReward(levelKey, {
@@ -114,9 +131,6 @@ export const Admin: React.FC = () => {
           icon: formState.icon || (formState.type === 'money' ? 'Zap' : formState.type === 'skin' ? 'Flame' : 'Photo')
         });
       } else if (activeAdminTab === 'skins') {
-        if (formState.image.length > 900000) {
-          throw new Error("Asset data too large (>900KB).");
-        }
         if (editingSkin) {
           await userService.updateSkin(editingSkin.id, {
             name: formState.name,
@@ -134,11 +148,7 @@ export const Admin: React.FC = () => {
           });
         }
       } else {
-        // Validate string size (Firestore limit is 1MB total per document)
-        if (formState.image.length > 900000) {
-          throw new Error("Asset data too large (>900KB). Please use a URL instead of a Base64 string for large GIFs.");
-        }
-
+        // Frames or Collector (both are frames)
         if (editingFrame) {
           await userService.updateFrame(editingFrame.id, { 
             name: formState.name, 
@@ -239,12 +249,20 @@ export const Admin: React.FC = () => {
           Combat Skins
         </button>
         <button 
-          onClick={() => setActiveAdminTab('creator')}
+          onClick={() => setActiveAdminTab('collector')}
           className={`pb-2 px-4 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${
-            activeAdminTab === 'creator' ? 'border-[#F2A900] text-[#F2A900]' : 'border-transparent text-gray-500 hover:text-gray-300'
+            activeAdminTab === 'collector' ? 'border-[#F2A900] text-[#F2A900]' : 'border-transparent text-gray-500 hover:text-gray-300'
           }`}
         >
-          Creator
+          Collector Drops
+        </button>
+        <button 
+          onClick={() => setActiveAdminTab('settings')}
+          className={`pb-2 px-4 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${
+            activeAdminTab === 'settings' ? 'border-[#F2A900] text-[#F2A900]' : 'border-transparent text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          Global Settings
         </button>
       </div>
 
@@ -255,21 +273,27 @@ export const Admin: React.FC = () => {
               <ICONS.Profile className="w-4 h-4" /> 
               {activeAdminTab === 'frames' ? 'ASSET MANAGEMENT: FRAMES' : 
                activeAdminTab === 'rp' ? 'CAMPAIGN MANAGEMENT: RP' : 
-               activeAdminTab === 'skins' ? 'ASSET MANAGEMENT: SKINS' : 'IDENTITY MANAGEMENT: CREATOR'}
+               activeAdminTab === 'skins' ? 'ASSET MANAGEMENT: SKINS' : 
+               activeAdminTab === 'collector' ? 'ELITE SERIES: COLLECTOR DROPS' : 'SYSTEM CONFIG: GLOBAL SETTINGS'}
             </h3>
             <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">
               {activeAdminTab === 'frames' ? 'Deploy new cosmetics to the field' : 
                activeAdminTab === 'rp' ? 'Configure season rewards and progression' : 
-               activeAdminTab === 'skins' ? 'Deploy new combat gear skins' : 'Manage application creator branding'}
+               activeAdminTab === 'skins' ? 'Deploy new combat gear skins' : 
+               activeAdminTab === 'collector' ? 'Manage limited edition collector gear' : 'Manage application branding and global UI'}
             </p>
           </div>
-          {(activeAdminTab === 'frames' || activeAdminTab === 'skins' || activeAdminTab === 'rp') && (
+          {(activeAdminTab === 'frames' || activeAdminTab === 'skins' || activeAdminTab === 'rp' || activeAdminTab === 'collector') && (
             <button 
               onClick={() => {
                 resetForm();
                 if (activeAdminTab === 'rp') {
                   const maxLvl = rpRewards.length > 0 ? Math.max(...rpRewards.map(r => r.level)) : 0;
                   setFormState(prev => ({ ...prev, level: maxLvl + 1 }));
+                }
+                if (activeAdminTab === 'collector') {
+                  // Suggest a collector ID
+                  setFormState(prev => ({ ...prev, id: `frame${frames.length + 1}` }));
                 }
                 setIsModalOpen(true);
               }}
@@ -281,9 +305,9 @@ export const Admin: React.FC = () => {
         </div>
 
         <div className="space-y-3">
-          {activeAdminTab === 'creator' ? (
+          {activeAdminTab === 'settings' ? (
             <div className="bg-black/60 border border-white/5 p-6 rounded-xl">
-              <form onSubmit={handleSaveCreator} className="space-y-6">
+              <form onSubmit={handleSaveSettings} className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Creator Name</label>
@@ -296,7 +320,7 @@ export const Admin: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Creator Logo (GIF/Image)</label>
+                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Creator LOGO</label>
                     <div className="flex gap-4">
                        <input 
                         type="file" 
@@ -319,30 +343,147 @@ export const Admin: React.FC = () => {
                         {creatorInfo.logo ? "Update Logo" : "Upload Logo"}
                       </label>
                       {creatorInfo.logo && (
-                        <div className="w-12 h-12 rounded-xl bg-black border border-white/10 overflow-hidden flex items-center justify-center">
-                          <img src={creatorInfo.logo} className="w-full h-full object-contain" alt="" />
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="w-12 h-12 rounded-xl bg-black border border-white/10 overflow-hidden flex items-center justify-center">
+                            <img src={creatorInfo.logo} className="w-full h-full object-contain" alt="" />
+                          </div>
+                          <span className={`text-[8px] font-mono ${creatorInfo.logo.length > 900000 ? 'text-red-500' : 'text-gray-500'}`}>
+                            {(creatorInfo.logo.length / 1024).toFixed(0)}KB
+                          </span>
                         </div>
                       )}
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
-                   <input 
-                      type="text"
-                      value={creatorInfo.logo}
-                      onChange={e => setCreatorInfo({...creatorInfo, logo: e.target.value})}
-                      placeholder="Or paste Logo URL (https://...)"
-                      className="flex-1 bg-black border border-white/5 rounded-xl p-2 text-[10px] text-gray-500 outline-none focus:border-[#F2A900]"
-                    />
+
+                <div>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5 flex justify-between">
+                    Home Background (GIF/Image)
+                    {appConfig.homeBackground && (
+                      <span className={`text-[9px] font-mono ${appConfig.homeBackground.length > 900000 ? 'text-red-500' : 'text-gray-400'}`}>
+                        Current Size: {(appConfig.homeBackground.length / 1024).toFixed(0)}KB {(appConfig.homeBackground.length > 900000 ? '⚠️ OVER LIMIT' : '')}
+                      </span>
+                    )}
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="flex gap-4">
+                      <input 
+                        type="file" 
+                        id="home-bg"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => setAppConfig({...appConfig, homeBackground: reader.result as string});
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                      <label 
+                        htmlFor="home-bg"
+                        className="flex-1 h-14 bg-black border border-white/5 rounded-xl text-gray-500 text-[10px] font-black uppercase flex items-center justify-center cursor-pointer hover:border-[#F2A900] transition-all"
+                      >
+                        {appConfig.homeBackground ? "Update Background" : "Upload Background"}
+                      </label>
+                      {appConfig.homeBackground && (
+                        <div className="w-24 h-14 rounded-xl bg-black border border-white/10 overflow-hidden flex items-center justify-center">
+                          <img src={appConfig.homeBackground} className="w-full h-full object-cover" alt="" />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <input 
+                        type="text"
+                        value={appConfig.homeBackground}
+                        onChange={e => setAppConfig({...appConfig, homeBackground: e.target.value})}
+                        placeholder="Or paste background URL"
+                        className="w-full bg-black border border-white/5 rounded-xl p-4 text-xs text-gray-500 outline-none focus:border-[#F2A900]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
                     <button 
                       type="submit"
                       disabled={loading}
-                      className="bg-[#F2A900] text-black px-8 py-3 rounded-xl font-black text-[10px] uppercase shadow-lg shadow-[#F2A900]/20 active:scale-95 transition-all"
+                      className="bg-[#F2A900] text-black px-12 py-4 rounded-xl font-black text-[12px] uppercase shadow-lg shadow-[#F2A900]/20 active:scale-95 transition-all"
                     >
-                      {loading ? "Syncing..." : "Update Creator Identity"}
+                      {loading ? "Synchronizing..." : "Save All System Settings"}
                     </button>
                 </div>
               </form>
+            </div>
+          ) : activeAdminTab === 'collector' ? (
+            <div className="space-y-4">
+              <div className="bg-black/40 border border-[#F2A900]/20 p-4 rounded-xl mb-4">
+                <p className="text-[10px] text-[#F2A900] font-black uppercase tracking-widest italic">
+                  Note: Frames with IDs "frame1", "frame2", "frame3", etc. are automatically recognized as Collector Drops in the shop.
+                </p>
+              </div>
+              {frames.filter(f => f.id.startsWith('frame')).length > 0 ? (
+                frames.filter(f => f.id.startsWith('frame')).sort((a,b) => a.id.localeCompare(b.id)).map(item => (
+                  <motion.div 
+                    key={item.id}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-gradient-to-r from-black/60 to-transparent border-l-4 border-l-[#F2A900] border-y border-y-white/5 border-r border-r-white/5 p-4 rounded-r-xl flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 bg-black rounded-lg border border-[#F2A900]/30 overflow-hidden flex items-center justify-center p-1 relative shadow-[0_0_15px_rgba(242,169,0,0.1)]">
+                        {item.image ? (
+                          <img src={item.image} alt={item.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                        ) : (
+                          <ICONS.Profile className="text-gray-700 w-6 h-6" />
+                        )}
+                        <div className="absolute top-0 right-0 bg-[#F2A900] text-black text-[6px] font-black px-1 rounded-bl-sm">Elite</div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-black text-white italic uppercase tracking-tighter" style={item.color ? { color: item.color } : {}}>{item.name}</div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[8px] font-black bg-white/5 px-1.5 py-0.5 rounded text-gray-500 border border-white/5">{item.id}</span>
+                          <span className="text-[8px] font-black text-[#F2A900]">{item.cost} GOLD</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                       <button 
+                        onClick={() => {
+                          setEditingFrame(item);
+                          setFormState({ 
+                            id: item.id, 
+                            name: item.name, 
+                            cost: item.cost.toString(), 
+                            image: item.image || '',
+                            color: item.color || '#F2A900',
+                            icon: item.icon || '',
+                            type: 'money',
+                            value: 0,
+                            level: 1
+                          });
+                          setIsModalOpen(true);
+                        }}
+                        className="p-3 bg-white/5 hover:bg-[#F2A900] hover:text-black text-white rounded-xl transition-all"
+                      >
+                        <ICONS.Edit className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </motion.div>
+                ))
+              ) : (
+                <div className="text-center py-12 bg-black/40 border border-dashed border-white/10 rounded-2xl">
+                  <ICONS.Alert className="w-10 h-10 text-gray-700 mx-auto mb-3" />
+                  <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest">No collector drops deployed</p>
+                  <button 
+                    onClick={() => { resetForm(); setFormState(prev => ({...prev, id: 'frame1'})); setIsModalOpen(true); }}
+                    className="mt-4 text-[9px] font-black text-[#F2A900] hover:underline"
+                  >
+                    INITIATE FIRST DEPLOYMENT
+                  </button>
+                </div>
+              )}
             </div>
           ) : activeAdminTab === 'frames' || activeAdminTab === 'skins' ? (activeAdminTab === 'frames' ? frames : skins).map(item => (
             <motion.div 
@@ -481,6 +622,7 @@ export const Admin: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <h3 className="text-xl font-black italic text-[#F2A900] uppercase skew-x-[-12deg]">
                     {activeAdminTab === 'rp' ? `EDIT RP TIER ${formState.level}` : 
+                     activeAdminTab === 'collector' ? 'DEPLOY COLLECTOR ASSET' :
                      (editingFrame || editingSkin) ? 'Modifying Asset' : 'New Deployment'}
                   </h3>
                   <button type="button" onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-white">
@@ -630,7 +772,9 @@ export const Admin: React.FC = () => {
                       <div>
                         <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5 flex justify-between">
                           Asset Image (GIF/UI)
-                          <span className="text-red-500 font-mono lower">max 1MB if using base64</span>
+                          <span className={`font-mono text-[9px] ${formState.image.length > 900000 ? 'text-red-500' : 'text-gray-400'}`}>
+                            {formState.image.length > 0 ? `${(formState.image.length / 1024).toFixed(0)}KB / 900KB` : 'max 900KB for upload'}
+                          </span>
                         </label>
                         <div className="flex gap-2">
                           <input 

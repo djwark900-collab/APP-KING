@@ -472,5 +472,30 @@ export const userService = {
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, 'app_settings/creator');
     }
+  },
+
+  async getAppConfig() {
+    if (isQuotaExceeded()) return { homeBackground: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&q=80' };
+    try {
+      const snap = await getDoc(doc(db, 'app_settings', 'theme'));
+      if (snap.exists()) return snap.data();
+      return { 
+        homeBackground: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&q=80' 
+      };
+    } catch (e) {
+      return { homeBackground: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&q=80' };
+    }
+  },
+
+  async updateAppConfig(data: { homeBackground: string }) {
+    if (isQuotaExceeded()) return;
+    try {
+      await setDoc(doc(db, 'app_settings', 'theme'), {
+        ...data,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, 'app_settings/theme');
+    }
   }
 };
