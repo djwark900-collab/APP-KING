@@ -55,7 +55,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   
   const isUnavailable = err?.code === "unavailable" || err?.message?.includes("offline");
 
-  if ((isQuota || isUnavailable) && typeof window !== 'undefined') {
+  if (isQuota && typeof window !== 'undefined') {
     localStorage.setItem('quota_error_time', Date.now().toString());
   }
   
@@ -87,8 +87,7 @@ async function validateConnection() {
     await getDocFromServer(doc(db, '_internal_', 'health'));
   } catch (error: any) {
     if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
-      console.warn("Firestore connection unavailable at boot.");
-      localStorage.setItem('quota_error_time', Date.now().toString());
+      console.warn("Firestore connection unavailable at boot. Retrying in background...");
     }
   }
 }

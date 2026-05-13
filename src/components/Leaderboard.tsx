@@ -32,27 +32,27 @@ export const Leaderboard: React.FC = () => {
       <div className="fixed inset-0 bg-noise opacity-[0.02] pointer-events-none" />
       <div className="fixed inset-0 bg-scanline opacity-[0.04] pointer-events-none" />
 
-      <div className="mb-10 flex items-end justify-between relative z-10">
+      <div className="mb-6 flex items-end justify-between relative z-10">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-[2px] w-8 bg-[#F2A900]" />
-            <span className="text-[10px] font-black text-[#F2A900] uppercase tracking-[0.4em]">Section: Global_Intel</span>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="h-[1px] w-6 bg-[#F2A900]" />
+            <span className="text-[8px] font-black text-[#F2A900] uppercase tracking-[0.3em]">Section: Intel</span>
           </div>
-          <h2 className="text-4xl font-black italic tracking-tighter text-white uppercase drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]">TOP SURVIVORS</h2>
-          <div className="flex items-center gap-4 mt-2">
-             <div className="flex items-center gap-2 bg-red-600/10 border border-red-600/20 px-2 py-0.5 rounded">
-                <div className="w-1.5 h-1.5 bg-red-600 rounded-full animate-pulse" />
-                <span className="text-[8px] font-black text-red-500 uppercase tracking-widest">LIVE_FEED</span>
+          <h2 className="text-2xl font-black italic tracking-tighter text-white uppercase">TOP SURVIVORS</h2>
+          <div className="flex items-center gap-3 mt-1">
+             <div className="flex items-center gap-1.5 bg-red-600/10 border border-red-600/20 px-1.5 py-0.5 rounded">
+                <div className="w-1 h-1 bg-red-600 rounded-full animate-pulse" />
+                <span className="text-[7px] font-black text-red-500 uppercase tracking-widest">LIVE</span>
              </div>
-             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">RANKINGS REFRESH: 10_DAYS</p>
+             <p className="text-[8px] font-bold text-gray-500 uppercase tracking-widest">REFRESH: 10D</p>
           </div>
         </div>
         
         <button 
           onClick={() => window.location.reload()}
-          className="w-12 h-12 bg-black/80 border border-white/5 rounded-xl flex items-center justify-center text-[#F2A900] hover:border-[#F2A900]/30 hover:bg-white/5 transition-all shadow-xl backdrop-blur-md group active:scale-90"
+          className="w-10 h-10 bg-black/80 border border-white/5 rounded-lg flex items-center justify-center text-[#F2A900] hover:border-[#F2A900]/30 transition-all shadow-xl backdrop-blur-md group active:scale-95"
         >
-          <ICONS.Alert className="w-6 h-6 group-hover:rotate-180 transition-transform duration-700" />
+          <ICONS.Alert className="w-5 h-5 group-hover:rotate-180 transition-transform duration-700" />
         </button>
       </div>
 
@@ -85,85 +85,70 @@ export const Leaderboard: React.FC = () => {
             <p className="text-[10px] font-black italic text-[#F2A900] uppercase tracking-[0.4em] animate-pulse">SCANNING_SURVIVAL_RECORDS...</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {topSurvivors.slice(0, 10).map((survivor, index) => {
               const frame = getFrameById(survivor.selectedFrameId);
               const rankName = getRankName(survivor.level || 1);
-              const isTop3 = index < 3;
               
               return (
                 <motion.div 
                   key={survivor.id}
-                  initial={{ opacity: 0, x: -20 }}
+                  initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
+                  transition={{ delay: index * 0.03 }}
                   onClick={() => setSelectedUserId(survivor.id)}
-                  className={`flex items-center gap-5 p-5 rounded-3xl border transition-all relative overflow-hidden group backdrop-blur-sm cursor-pointer ${
+                  className={`flex items-center gap-3 p-3 rounded-2xl border transition-all relative overflow-hidden group backdrop-blur-sm cursor-pointer ${
                     index === 0 
-                      ? 'bg-[#1a1a1a]/80 border-[#F2A900] shadow-[0_0_30px_rgba(242,169,0,0.15)] ring-1 ring-[#F2A900]/20' 
-                      : 'bg-[#111]/80 border-white/5 hover:border-white/20 shadow-xl'
-                  } group active:scale-[0.98]`}
+                      ? 'bg-[#1a1a1a]/80 border-[#F2A900] shadow-[0_0_20px_rgba(242,169,0,0.1)]' 
+                      : 'bg-[#111]/80 border-white/5 hover:border-white/20'
+                  } active:scale-[0.99]`}
                 >
-                  <div className="absolute inset-0 bg-scanline opacity-[0.03] group-hover:opacity-[0.07] transition-opacity" />
+                  <div className="absolute inset-0 bg-scanline opacity-[0.02]" />
                   
-                  <div className={`w-10 h-10 flex items-center justify-center font-black italic text-2xl shrink-0 group-hover:scale-110 transition-transform ${
-                    index === 0 ? 'text-[#F2A900] drop-shadow-[0_0_10px_rgba(242,169,0,0.8)]' : 
-                    index === 1 ? 'text-gray-300 drop-shadow-[0_0_8px_rgba(200,200,200,0.5)]' : 
-                    index === 2 ? 'text-amber-700' : 'text-white/10'
+                  <div className={`w-8 h-8 flex items-center justify-center font-black italic text-xl shrink-0 ${
+                    index === 0 ? 'text-[#F2A900]' : 
+                    index === 1 ? 'text-gray-300' : 
+                    index === 2 ? 'text-amber-700' : 'text-white/5'
                   }`}>
                     {index + 1}
                   </div>
                   
                   {/* Profile Avatar with Frame */}
-                  <div className="relative w-16 h-16 shrink-0">
-                    <div className="absolute inset-0 bg-white/5 rounded-2xl animate-pulse group-hover:bg-[#F2A900]/10 transition-colors" />
+                  <div className="relative w-12 h-12 shrink-0">
                     {frame?.image && (
-                      <div className="absolute inset-[-25%] pointer-events-none z-10 transition-transform group-hover:scale-105">
+                      <div className="absolute inset-[-20%] pointer-events-none z-10">
                         <img 
                           src={frame.image} 
                           alt="" 
-                          className="w-full h-full object-contain mix-blend-screen brightness-125" 
+                          className="w-full h-full object-contain mix-blend-screen" 
                           referrerPolicy="no-referrer" 
                         />
                       </div>
                     )}
-                    <div className="w-full h-full rounded-2xl bg-black border border-white/10 flex items-center justify-center overflow-hidden relative shadow-[inset_0_0_20px_rgba(0,0,0,0.8)]">
+                    <div className="w-full h-full rounded-xl bg-black border border-white/5 flex items-center justify-center overflow-hidden relative">
                       {survivor.photoURL ? (
-                        <img src={survivor.photoURL} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" referrerPolicy="no-referrer" />
+                        <img src={survivor.photoURL} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       ) : (
-                        <ICONS.Profile className="w-8 h-8 text-white/5" />
+                        <ICONS.Profile className="w-5 h-5 text-white/5" />
                       )}
                     </div>
                   </div>
-
-                  <div className="flex-1 min-w-0 relative">
-                    <div className="flex flex-col mb-1">
-                      <h4 className="font-black truncate text-lg uppercase italic tracking-tighter text-white group-hover:text-[#F2A900] transition-colors leading-none mb-1">
-                        {survivor.displayName || 'SURVIVOR'}
-                      </h4>
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1.5">
-                          <div className={`w-1.5 h-1.5 rounded-full ${index === 0 ? 'bg-[#F2A900]' : 'bg-gray-700'}`} />
-                          <span className="text-[9px] font-black uppercase text-gray-500 tracking-widest">
-                            {rankName} • LVL {survivor.level || 1}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-right shrink-0">
-                    <div className="flex items-center justify-end gap-2 mb-0.5">
-                      <span className={`text-2xl font-black italic leading-none tracking-tighter ${index === 0 ? 'text-[#F2A900] drop-shadow-xl' : 'text-white'}`}>
-                        {survivor.wins?.toLocaleString() || survivor.score?.toLocaleString() || 0}
-                      </span>
-                    </div>
-                    <div className="text-[7px] font-black text-[#F2A900] uppercase tracking-[0.3em] italic brightness-75">DINNERS_SECURED</div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-black truncate text-sm uppercase italic tracking-tighter text-white group-hover:text-[#F2A900] transition-colors leading-none mb-1">
+                      {survivor.displayName || 'SURVIVOR'}
+                    </h4>
+                    <span className="text-[8px] font-black uppercase text-gray-500 tracking-widest">
+                      {rankName} • LVL {survivor.level || 1}
+                    </span>
                   </div>
                   
-                  {index === 0 && (
-                    <div className="absolute top-0 right-10 bottom-0 w-32 bg-gradient-to-r from-transparent via-[#F2A900]/5 to-transparent skew-x-[-45deg] pointer-events-none" />
-                  )}
+                  <div className="text-right shrink-0">
+                    <span className={`text-lg font-black italic leading-none tracking-tighter block ${index === 0 ? 'text-[#F2A900]' : 'text-white'}`}>
+                      {survivor.wins?.toLocaleString() || survivor.score?.toLocaleString() || 0}
+                    </span>
+                    <span className="text-[6px] font-black text-[#F2A900] uppercase tracking-widest italic brightness-75">DINNERS</span>
+                  </div>
                 </motion.div>
               );
             })}

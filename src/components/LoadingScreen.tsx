@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { ICONS } from '../constants';
+import { userService } from '../services/userService';
 
 export const LoadingScreen: React.FC = () => {
   const [creator, setCreator] = React.useState<{name: string, logo: string} | null>(null);

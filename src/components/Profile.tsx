@@ -408,9 +408,12 @@ export const Profile: React.FC<ProfileProps & { onNavigate?: (tab: 'home' | 'sho
               <div className="space-y-12">
                 <div>
                   <div className="flex items-center justify-between mb-6">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em] flex items-center gap-3">
-                      <div className="w-2 h-2 bg-[#F2A900] rounded-full" /> TACTICAL FRAMES
-                    </label>
+                    <div className="flex flex-col">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em] flex items-center gap-3">
+                        <div className="w-2 h-2 bg-[#F2A900] rounded-full" /> TACTICAL FRAMES
+                      </label>
+                      <span className="text-[7px] font-black text-[#F2A900] uppercase tracking-widest mt-1">Tap to equip from your armory</span>
+                    </div>
                   </div>
                   <div className="grid grid-cols-4 gap-4">
                     {profile?.ownedFrames?.map((frameId: string) => {
@@ -420,24 +423,26 @@ export const Profile: React.FC<ProfileProps & { onNavigate?: (tab: 'home' | 'sho
                         <motion.button
                           key={frameId}
                           whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
+                          whileTap={{ scale: 0.9 }}
                           onClick={() => userService.selectItem(user!.uid!, frameId, 'frame')}
                           className={`aspect-square relative rounded-2xl border-2 transition-all p-1 overflow-hidden flex items-center justify-center ${
                             isSelected 
-                              ? 'bg-[#F2A900]/10 border-[#F2A900] shadow-[0_0_20px_rgba(242,169,0,0.2)]' 
-                              : 'bg-black border-white/5 hover:border-white/20'
+                              ? 'bg-[#F2A900]/10 border-[#F2A900] shadow-[0_0_20px_rgba(242,169,0,0.3)]' 
+                              : 'bg-black border-white/5 hover:border-[#F2A900]/40'
                           }`}
                         >
                           <div className="absolute inset-0 bg-scanline opacity-[0.1]" />
                           {frame?.image ? (
                             <img src={frame.image} alt="" className="w-full h-full object-cover rounded-xl" referrerPolicy="no-referrer" />
                           ) : (
-                            <ICONS.Profile className="w-8 h-8 text-white/10" />
+                            <ICONS.Profile className={`w-8 h-8 ${isSelected ? 'text-[#F2A900]' : 'text-white/10'}`} />
                           )}
                           
                           {isSelected && (
                             <div className="absolute top-1 right-1 w-3 h-3 bg-[#F2A900] rounded-full border-2 border-black animate-pulse" />
                           )}
+                          
+                          <div className={`absolute bottom-0 left-0 right-0 h-1 bg-[#F2A900] transition-transform ${isSelected ? 'scale-x-100' : 'scale-x-0'}`} />
                         </motion.button>
                       );
                     })}

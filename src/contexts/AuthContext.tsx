@@ -200,26 +200,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [quotaExceeded]); 
 
   useEffect(() => {
-    const fetchLeaderboard = async () => {
-      // Significantly extended cache: only try once every 6 hours if we have data
-      if (!user || quotaExceeded || (Date.now() - lastLeaderboardFetchRef.current < 6 * 60 * 60 * 1000 && topSurvivors.length > 0)) return;
+    if (!user || quotaExceeded) return;
 
-      try {
-        const survivors = await userService.getLeaderboard(20);
-        if (survivors && survivors.length > 0) {
-          setTopSurvivors(survivors);
-          localStorage.setItem('cache_leaderboard', JSON.stringify(survivors));
-        }
-        lastLeaderboardFetchRef.current = Date.now();
-      } catch (err: any) {
-        if (err.message?.includes("quota") || err.code === "resource-exhausted") {
-          handleQuotaError();
-        }
+    const q = query(collection(db, 'users'), orderBy('score', 'desc'), limit(20));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const survivors = snapshot.docs.map(doc => ({ 
+        id: doc.id,
+        uid: doc.id, 
+        displayName: doc.data().displayName, 
+        score: doc.data().score,
+        wins: doc.data().score, 
+        level: doc.data().level,
+        rpLevel: doc.data().rpLevel || 1,
+        photoURL: doc.data().photoURL,
+        selectedFrameId: doc.data().selectedFrameId,
+        selectedSkinId: doc.data().selectedSkinId
+      }));
+      setTopSurvivors(survivors);
+      localStorage.setItem('cache_leaderboard', JSON.stringify(survivors));
+    }, (err: any) => {
+      console.warn("Leaderboard live sync failed:", err);
+      if (err.message?.includes("quota") || err.code === "resource-exhausted") {
+        handleQuotaError();
       }
-    };
+    });
 
-    fetchLeaderboard();
-  }, [user, quotaExceeded]); // Fetch when user logs in or quota resets
+    return unsubscribe;
+  }, [user, quotaExceeded]); 
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {

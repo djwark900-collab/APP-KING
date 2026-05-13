@@ -107,6 +107,8 @@ export const Home: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'prof
   }, [level, prevLevel]);
 
   const currentLevelRank = LEVELS.findLast(l => level >= l.min) || LEVELS[0];
+  const { topSurvivors } = useAuth();
+  const topPlayer = topSurvivors?.[0];
 
   return (
     <div className="h-full flex flex-col items-center justify-center p-8 relative overflow-hidden bg-cover bg-center font-mono selection:bg-[#F2A900] selection:text-black"
@@ -163,152 +165,141 @@ export const Home: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'prof
       </AnimatePresence>
 
       {/* HUD: Left - Rank (Compact) */}
-      <div className="absolute top-20 left-4 z-20 flex flex-col gap-3">
+      <div className="absolute top-16 left-4 z-20 flex flex-col gap-2 scale-90 origin-top-left">
+        {topPlayer && (
+          <motion.div 
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            className="group flex items-center gap-2.5 bg-black/40 border border-white/5 rounded-lg p-2 backdrop-blur-md shadow-xl"
+          >
+            <div className="relative">
+              <div className="w-7 h-7 rounded-lg bg-black border border-white/10 overflow-hidden">
+                {topPlayer.photoURL ? (
+                  <img src={topPlayer.photoURL} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <ICONS.Profile className="w-3 h-3 text-[#F2A900] mx-auto mt-2" />
+                )}
+              </div>
+              <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-600 rounded-full flex items-center justify-center border border-black animate-pulse">
+                 <span className="text-[5px] font-black text-white">#1</span>
+              </div>
+            </div>
+            <div className="flex flex-col items-start leading-none pr-2 border-r border-white/10">
+              <span className="text-[5px] font-black text-red-500 uppercase tracking-widest mb-0.5">TOP_DOG</span>
+              <span className="text-[9px] font-black italic text-white uppercase truncate max-w-[60px]">
+                {topPlayer.displayName || 'SURVIVOR'}
+              </span>
+            </div>
+            <div className="flex flex-col items-start leading-none">
+              <span className="text-[9px] font-black text-[#F2A900] italic">
+                {topPlayer.score?.toLocaleString()}
+              </span>
+              <span className="text-[5px] font-black text-gray-400 uppercase tracking-widest">DINNERS</span>
+            </div>
+          </motion.div>
+        )}
+
         {onNavigate && (
           <motion.button 
             whileHover={{ x: 3 }}
             onClick={() => onNavigate('top')}
-            className="group flex items-center gap-2.5 bg-black/80 border border-white/5 rounded-lg p-2.5 backdrop-blur-md shadow-xl hover:border-[#F2A900]/30 transition-all"
+            className="group flex items-center gap-2 bg-black/40 border border-white/5 rounded-lg p-2 backdrop-blur-md shadow-xl hover:border-[#F2A900]/30 transition-all w-fit"
           >
-            <ICONS.Trophy className="w-4 h-4 text-[#F2A900]" />
-            <div className="flex flex-col items-start leading-none">
-              <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest">Ranking</span>
-              <span className="text-[10px] font-black italic text-white uppercase">SURVIVORS</span>
-            </div>
+            <ICONS.Trophy className="w-3 h-3 text-[#F2A900]" />
+            <span className="text-[8px] font-black italic text-white uppercase">RECORDS</span>
           </motion.button>
         )}
       </div>
 
-      {/* HUD: Right - Economy (Compact) */}
-      <div className="absolute top-20 right-4 flex flex-col items-end gap-3 z-20">
-        <div className="bg-black/80 border border-white/5 rounded-lg p-2.5 pr-4 flex items-center gap-3 backdrop-blur-md shadow-xl">
-          <div className="w-8 h-8 bg-[#F2A900]/5 rounded flex items-center justify-center border border-[#F2A900]/10">
-            <ICONS.Zap className="w-4 h-4 text-[#F2A900] animate-pulse" />
-          </div>
-          <div className="flex flex-col items-start leading-none">
-            <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Gold</span>
-            <motion.span 
-              key={profile?.money}
-              className="text-lg font-black italic text-white"
-            >
-              {profile?.money?.toLocaleString() || 0}
-            </motion.span>
-          </div>
+      {/* HUD: Economy (Top Row) */}
+      <div className="absolute top-2 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-30">
+        <div className="bg-black/60 border border-white/10 rounded-full p-1.5 px-4 flex items-center gap-3 backdrop-blur-xl shadow-2xl">
+          <ICONS.Zap className="w-3 h-3 text-yellow-400 animate-pulse" />
+          <motion.span 
+            key={profile?.money}
+            className="text-xs font-black italic text-white"
+          >
+            {profile?.money?.toLocaleString() || 0} G
+          </motion.span>
         </div>
 
         {isBoostActive && (
           <motion.div 
-            initial={{ x: 10, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            className="bg-red-600/10 border border-red-600/30 rounded-lg p-1.5 px-3 backdrop-blur-sm flex items-center gap-2.5"
+            initial={{ y: -10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="bg-red-600/20 border border-red-600/30 rounded-lg p-1 px-3 backdrop-blur-sm flex items-center gap-2 scale-75"
           >
-            <ICONS.Zap className="w-3 h-3 text-red-500 animate-bounce" />
-            <div className="flex flex-col items-start">
-              <span className="text-[11px] font-black italic text-red-500 leading-none">{multiplier}X ACTIVE</span>
-              <span className="text-[7px] font-mono text-white/50">{formatTime(timeLeft)}</span>
-            </div>
+            <ICONS.Zap className="w-2.5 h-2.5 text-red-500 animate-bounce" />
+            <span className="text-[8px] font-black italic text-red-500 leading-none">{multiplier}X</span>
+            <span className="text-[7px] font-mono text-white/50">{formatTime(timeLeft)}</span>
           </motion.div>
         )}
       </div>
 
       {/* Center HUD: Season Progress */}
-      <div className="absolute top-4 left-4 right-4 z-10">
-        <div className="bg-black/40 border border-white/5 rounded-2xl p-3 px-4 backdrop-blur-xl relative overflow-hidden group">
-          <div className="absolute inset-0 bg-scanline opacity-[0.03] pointer-events-none" />
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 bg-gradient-to-br from-[#F2A900] to-[#8B0000] rounded-md flex items-center justify-center shadow-lg">
-                <ICONS.Crown className="w-4 h-4 text-black" />
-              </div>
-              <div>
-                <h3 className="text-[11px] font-black italic text-white leading-none">S1 SURVIVAL</h3>
-                <div className="text-[6px] font-black text-[#F2A900] uppercase tracking-[0.2em] mt-1">LVL {rpLevel} PROG</div>
-              </div>
+      <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[70%] z-10 px-4">
+        <div className="bg-black/20 border border-white/5 rounded-full p-2 px-4 backdrop-blur-md relative overflow-hidden group">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <ICONS.Crown className="w-3 h-3 text-[#F2A900]" />
+              <span className="text-[8px] font-black italic text-white whitespace-nowrap">ELITE S1</span>
             </div>
-            <div className="text-right">
-              <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest block">RP XP</span>
-              <span className="text-[12px] font-black italic text-white leading-none">{rpProgress}%</span>
+            <div className="flex-1 h-1 bg-black/50 rounded-full overflow-hidden border border-white/5 relative">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${rpProgress}%` }}
+                className="h-full bg-[#F2A900]" 
+              />
             </div>
-          </div>
-          
-          <div className="h-1 bg-black rounded-full overflow-hidden border border-white/5 relative">
-            <motion.div 
-              initial={{ width: 0 }}
-              animate={{ width: `${rpProgress}%` }}
-              className="h-full bg-gradient-to-r from-[#F2A900] to-[#FFD700] rounded-full relative" 
-            />
+            <span className="text-[8px] font-black italic text-[#F2A900]">{rpProgress}%</span>
           </div>
         </div>
       </div>
 
       {/* Gameplay Core */}
       <div className="flex-1 flex flex-col items-center justify-center relative w-full pt-16">
-        {/* Score Readout (Soul/Dynamic) */}
-        <div className="absolute top-8 flex flex-col items-center">
-          <div className="opacity-30 mb-2 flex flex-col items-center">
-            <span className="text-[7px] font-black text-white uppercase tracking-[0.8em]">COMBAT RATING</span>
+        {/* Score Readout (Minimal) */}
+        <div className="absolute top-0 flex flex-col items-center">
+          <motion.h1 
+            key={profile?.score}
+            initial={{ scale: 0.95 }}
+            animate={{ scale: 1 }}
+            className="text-6xl font-black text-white italic tracking-tighter drop-shadow-2xl"
+          >
+            {((profile?.score || 0) + pendingScore).toLocaleString()}
+          </motion.h1>
+          <div className="flex items-center gap-2 opacity-40">
+            <div className="h-[1px] w-4 bg-[#F2A900]" />
+            <span className="text-[6px] font-black text-white uppercase tracking-[0.5em]">RATING</span>
+            <div className="h-[1px] w-4 bg-[#F2A900]" />
           </div>
-          
-          <div className="relative group cursor-default">
-            <h1 className="text-7xl font-black text-white italic tracking-tighter drop-shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-transform duration-700 group-hover:scale-105">
-              {((profile?.score || 0) + pendingScore).toLocaleString() || 0}
-            </h1>
-            <div className="absolute inset-0 blur-2xl bg-[#F2A900]/5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-          </div>
-          
-          {isSyncing && (
-             <p className="text-[7px] font-black text-[#F2A900] uppercase tracking-[0.5em] mt-3 animate-pulse">
-               UPLOADING_DATA...
-             </p>
-          )}
         </div>
 
-        {/* Tactical Interaction Port (Button) */}
+        {/* Tactical Interaction Port (Small) */}
         <motion.button
           onMouseDown={handleTap}
           onTouchStart={handleTap}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.94, y: 5 }}
-          className="group relative w-64 h-64 flex items-center justify-center bg-transparent transition-all outline-none"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.92 }}
+          className="group relative w-48 h-48 flex items-center justify-center bg-transparent outline-none"
         >
-          {/* Hardware Frame UI */}
-          <div className="absolute inset-0 bg-stone-900/10 rounded-[3rem] border border-white/5 backdrop-blur-sm" />
-          
-          {/* Animated Tech Rings */}
-          <div className="absolute inset-[-8px] border-2 border-[#F2A900]/10 rounded-[3.5rem] animate-[flicker_10s_infinite]" />
-          <div className="absolute inset-[-15px] border border-white/5 rounded-[4rem] animate-pulse opacity-20" />
-
-          {/* Interactive Core */}
-          <div className="absolute inset-1.5 bg-gradient-to-br from-[#111] to-[#010101] rounded-[2.8rem] border-2 border-white/5 shadow-2xl transition-colors group-hover:border-[#F2A900]/20">
-             <div className="absolute inset-0 bg-black/60 group-active:bg-[#F2A900]/5 transition-colors" />
-             
-             {/* Corner Markers */}
-             <div className="absolute top-3 left-3 w-1.5 h-1.5 border-t border-l border-[#F2A900]/40" />
-             <div className="absolute top-3 right-3 w-1.5 h-1.5 border-t border-r border-[#F2A900]/40" />
-             <div className="absolute bottom-3 left-3 w-1.5 h-1.5 border-b border-l border-[#F2A900]/40" />
-             <div className="absolute bottom-3 right-3 w-1.5 h-1.5 border-b border-r border-[#F2A900]/40" />
-          </div>
+          <div className="absolute inset-4 bg-stone-900/10 rounded-full border border-white/5 backdrop-blur-sm" />
+          <div className="absolute inset-0 border border-[#F2A900]/5 rounded-full animate-pulse" />
 
           {/* Asset/Skin Display */}
           <motion.div
-            animate={{ 
-              y: [0, -6, 0],
-              filter: ["brightness(1)", "brightness(1.1)", "brightness(1)"]
-            }}
-            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+            animate={{ y: [0, -4, 0] }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
             className="relative z-10 flex flex-col items-center"
           >
             <div className="relative group-active:scale-90 transition-transform duration-75">
-              <div className="absolute inset-0 bg-[#F2A900] blur-[40px] opacity-[0.08] group-hover:opacity-20 transition-opacity" />
               {currentSkin.image ? (
-                <img src={currentSkin.image} alt="" className="w-48 h-48 object-contain drop-shadow-[0_15px_30px_rgba(0,0,0,0.6)] relative z-10" referrerPolicy="no-referrer" />
+                <img src={currentSkin.image} alt="" className="w-32 h-32 object-contain drop-shadow-2xl" referrerPolicy="no-referrer" />
               ) : (
-                <SkinIcon className="w-32 h-32 text-[#F2A900] drop-shadow-[0_0_20px_rgba(242,169,0,0.3)] relative z-10" />
+                <SkinIcon className="w-24 h-24 text-[#F2A900] drop-shadow-[0_0_20px_rgba(242,169,0,0.3)]" />
               )}
             </div>
-            <div className="mt-4 flex flex-col items-center">
-               <span className="text-[8px] font-black uppercase tracking-[0.5em] text-white/40 group-hover:text-[#F2A900]/60 transition-colors">{currentSkin.name}</span>
-            </div>
+            <span className="mt-2 text-[6px] font-black uppercase tracking-[0.4em] text-white/30">{currentSkin.name}</span>
           </motion.div>
         </motion.button>
       </div>

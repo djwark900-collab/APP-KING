@@ -44,41 +44,8 @@ export const Shop: React.FC = () => {
     for (const s of SHORE_ITEMS.skins) await userService.addSkin(s);
   };
 
-  // Merge context items with static items
   const allFrames = frames.length > 0 ? frames : SHORE_ITEMS.frames;
   const allSkins = contextSkins.length > 0 ? contextSkins : SHORE_ITEMS.skins;
-
-  const collectorFrames = allFrames.filter(f => ['frame1', 'frame2', 'frame3'].includes(f.id));
-  const [selectedCollectorId, setSelectedCollectorId] = useState(collectorFrames[0]?.id || '');
-
-  const handleBuyAllFrames = async () => {
-    const toBuy = collectorFrames.filter(f => !profile?.ownedFrames?.includes(f.id));
-    const totalCost = toBuy.reduce((sum, f) => sum + f.cost, 0);
-    
-    if (toBuy.length === 0) {
-      alert("You already own all collector frames!");
-      return;
-    }
-
-    if (profile?.money >= totalCost) {
-      if (confirm(`Buy ${toBuy.length} frames for ${totalCost} gold?`)) {
-        try {
-          setIsLoading(true);
-          for (const frame of toBuy) {
-            await userService.purchaseItem(user.uid, frame.id, 'frame', frame.cost);
-          }
-          await refreshProfile();
-          alert("All collector frames added to your armory!");
-        } catch (e: any) {
-          alert(e.message);
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    } else {
-      alert("Insufficient funds to buy all frames!");
-    }
-  };
 
   return (
     <div className="p-6 bg-[#070707] min-h-full font-mono selection:bg-[#F2A900] selection:text-black pb-32">
@@ -138,91 +105,6 @@ export const Shop: React.FC = () => {
               )}
             </div>
           </div>
-
-          {/* Featured Collector Series */}
-          <section className="mb-12 relative z-10 group">
-            <div className="absolute inset-0 bg-[#F2A900] opacity-[0.02] blur-[100px] pointer-events-none" />
-            <div className="p-8 bg-[#111] border border-[#F2A900]/20 rounded-[2.5rem] relative overflow-hidden backdrop-blur-xl shadow-2xl">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-[#F2A900] opacity-[0.03] blur-3xl -mr-32 -mt-32" />
-              <div className="absolute top-6 left-6 flex items-center gap-2">
-                <div className="w-2 h-2 bg-[#F2A900] rounded-full animate-pulse" />
-                <span className="text-[10px] font-black text-[#F2A900] uppercase tracking-[0.4em]">COLLECTOR_SERIES_DROP</span>
-              </div>
-
-              <div className="relative z-10 mt-8">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-                  <div>
-                    <h3 className="text-3xl font-black italic text-white tracking-tighter uppercase leading-none mb-2">LIMITED EDITION</h3>
-                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Exotic rarity tactical frames</p>
-                  </div>
-                  <button 
-                    onClick={handleBuyAllFrames}
-                    className="shrink-0 bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-widest px-6 py-3 rounded-xl hover:bg-[#F2A900] hover:text-black hover:border-black transition-all shadow-xl active:scale-95"
-                  >
-                    ACQUIRE COMPLETE SERIES
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="relative">
-                    <select 
-                      value={selectedCollectorId}
-                      onChange={(e) => setSelectedCollectorId(e.target.value)}
-                      className="w-full bg-black border border-white/10 p-5 rounded-2xl text-white font-black uppercase text-xs appearance-none focus:border-[#F2A900] outline-none transition-all cursor-pointer group-hover:border-white/20 shadow-inner"
-                    >
-                      {collectorFrames.map(f => (
-                        <option key={f.id} value={f.id} className="bg-[#111] text-white">
-                          {f.name} — {f.cost} G
-                        </option>
-                      ))}
-                    </select>
-                    <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
-                      <ICONS.Chevron className="w-5 h-5 rotate-90" />
-                    </div>
-                  </div>
-
-                  {(() => {
-                    const selectedFrame = collectorFrames.find(f => f.id === selectedCollectorId);
-                    if (!selectedFrame) return null;
-                    const isOwned = profile?.ownedFrames?.includes(selectedFrame.id);
-                    const isSelected = profile?.selectedFrameId === selectedFrame.id;
-
-                    return (
-                      <motion.div 
-                        key={selectedFrame.id}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="bg-black/60 border border-white/5 p-5 rounded-2xl flex items-center justify-between gap-6 backdrop-blur-md"
-                      >
-                        <div className="flex items-center gap-5">
-                          <div className="w-16 h-16 rounded-xl overflow-hidden border border-white/5 shrink-0 bg-[#0a0a0a] relative group">
-                            <img src={selectedFrame.image} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" referrerPolicy="no-referrer" />
-                            <div className="absolute inset-0 bg-scanline opacity-10" />
-                          </div>
-                          <div>
-                            <div className="font-black text-white italic text-lg tracking-tighter uppercase leading-none mb-1">{selectedFrame.name}</div>
-                            <div className="text-[8px] font-black text-[#F2A900] uppercase tracking-widest flex items-center gap-1">
-                              <div className="w-1 h-1 bg-[#F2A900] rounded-full" /> RARITY: EXOTIC
-                            </div>
-                          </div>
-                        </div>
-                        <button 
-                          onClick={() => handlePurchase(selectedFrame, 'frame')}
-                          className={`px-8 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl active:scale-95 ${
-                            isOwned 
-                              ? isSelected ? 'bg-[#F2A900] text-black shadow-[#F2A900]/20' : 'bg-white/5 text-white/40 border border-white/5' 
-                              : 'bg-white text-black hover:bg-[#F2A900]'
-                          }`}
-                        >
-                          {isOwned ? (isSelected ? 'ACTIVE' : 'EQUIP') : 'ACQUIRE'}
-                        </button>
-                      </motion.div>
-                    );
-                  })()}
-                </div>
-              </div>
-            </div>
-          </section>
 
           {/* Pending Sync */}
           {pendingScore > 0 && (
