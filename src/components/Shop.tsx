@@ -199,6 +199,40 @@ export const Shop: React.FC = () => {
                   400 G
                 </button>
               </motion.div>
+
+              <motion.div 
+                whileHover={{ scale: 1.01 }}
+                className="bg-black/40 border-2 border-white/5 p-5 rounded-2xl flex items-center justify-between group hover:border-blue-500/30 transition-all font-mono"
+              >
+                <div className="flex items-center gap-5">
+                  <div className="w-14 h-14 bg-[#F2A900]/10 rounded-xl flex items-center justify-center border border-[#F2A900]/20 relative">
+                    <ICONS.Zap className="text-[#F2A900] w-8 h-8 drop-shadow-[0_0_8px_rgba(242,169,0,0.5)]" />
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#F2A900] rounded-full animate-pulse" />
+                    <span className="absolute -bottom-1 -right-1 bg-[#F2A900] text-[8px] font-black px-1 rounded-sm text-black">4X</span>
+                  </div>
+                  <div>
+                    <h4 className="font-black italic text-lg text-white leading-none mb-1 uppercase tracking-tighter">ELITE MULTIPLIER</h4>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">4X DP for 60 seconds</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={async () => {
+                    if (profile?.money >= 1200) {
+                      try {
+                        await userService.buyMultiplier(user.uid, 4, 1, 1200);
+                        alert("4X Elite Multiplier Active!");
+                      } catch (e: any) {
+                        alert(e.message);
+                      }
+                    } else {
+                      alert("Insufficient funds! Upgrade your level or claim rewards.");
+                    }
+                  }}
+                  className="bg-[#F2A900] text-black font-black uppercase text-[10px] px-8 py-4 rounded-xl hover:bg-white shadow-xl shadow-[#F2A900]/20 active:scale-95 transition-all"
+                >
+                  1200 G
+                </button>
+              </motion.div>
             </div>
           </section>
 

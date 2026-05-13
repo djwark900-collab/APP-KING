@@ -255,20 +255,21 @@ export const Profile: React.FC<ProfileProps & { onNavigate?: (tab: 'home' | 'sho
                 </button>
               )}
 
-              <div className="grid grid-cols-2 gap-4 w-full">
-                <div className="bg-black/50 p-4 rounded-xl border border-[#333] text-center relative overflow-hidden group">
-                  <div className="absolute top-0 left-0 w-full h-0.5 bg-[#F2A900]/20" />
-                  <div className="text-2xl font-black text-[#F2A900] italic leading-none mb-1 drop-shadow-[0_0_8px_rgba(242,169,0,0.3)]">{profile?.score?.toLocaleString() || 0}</div>
-                  <div className="text-[10px] font-black uppercase text-gray-500 tracking-widest flex items-center justify-center gap-1">
-                    <ICONS.Flame className="w-2 h-2" /> Dinners
-                  </div>
+              <div className="grid grid-cols-3 gap-3 w-full">
+                <div className="bg-black/50 p-4 rounded-2xl border border-white/5 text-center relative overflow-hidden group">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-[#F2A900]/20" />
+                  <div className="text-xl font-black text-[#F2A900] italic leading-none mb-1 drop-shadow-[0_0_8px_rgba(242,169,0,0.3)]">{profile?.score?.toLocaleString() || 0}</div>
+                  <div className="text-[7px] font-black uppercase text-gray-500 tracking-[0.2em]">Dinners</div>
                 </div>
-                <div className="bg-black/50 p-4 rounded-xl border border-[#333] text-center relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-0.5 bg-white/10" />
-                  <div className="text-2xl font-black text-white italic leading-none mb-1">{level}</div>
-                  <div className="text-[10px] font-black uppercase text-gray-500 tracking-widest flex items-center justify-center gap-1">
-                    <ICONS.Tapper className="w-2 h-2" /> Combat
-                  </div>
+                <div className="bg-black/50 p-4 rounded-2xl border border-white/5 text-center relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-white/10" />
+                  <div className="text-xl font-black text-white italic leading-none mb-1">{level}</div>
+                  <div className="text-[7px] font-black uppercase text-gray-500 tracking-[0.2em]">Combat</div>
+                </div>
+                <div className="bg-black/50 p-4 rounded-2xl border border-white/5 text-center relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-red-600/30" />
+                  <div className="text-xl font-black text-red-500 italic leading-none mb-1">{profile?.rpLevel || 1}</div>
+                  <div className="text-[7px] font-black uppercase text-gray-500 tracking-[0.2em]">Pass</div>
                 </div>
               </div>
             </div>

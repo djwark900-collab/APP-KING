@@ -40,7 +40,7 @@ export const userService = {
     }
   },
 
-  async getLeaderboard(limitCount: number = 20) {
+  async getLeaderboard(limitCount: number = 10) {
     if (isQuotaExceeded()) return JSON.parse(localStorage.getItem('cache_leaderboard') || '[]');
     try {
       const q = query(collection(db, 'users'), orderBy('score', 'desc'), limit(limitCount));
@@ -50,7 +50,9 @@ export const userService = {
         uid: doc.id, 
         displayName: doc.data().displayName, 
         score: doc.data().score,
+        wins: doc.data().score, // Using score as wins/chicken dinners
         level: doc.data().level,
+        rpLevel: doc.data().rpLevel || 1,
         photoURL: doc.data().photoURL,
         selectedFrameId: doc.data().selectedFrameId,
         selectedSkinId: doc.data().selectedSkinId
