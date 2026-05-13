@@ -220,7 +220,7 @@ export const userService = {
       const data = snap.data();
       
       if (data.claimedRpRewards?.includes(level)) {
-        throw new Error("Reward already claimed!");
+        return; 
       }
 
       const updates: any = {
@@ -246,6 +246,10 @@ export const userService = {
     if (isQuotaExceeded()) return;
     const path = `users/${userId}`;
     try {
+      const snap = await getDoc(doc(db, 'users', userId));
+      if (snap.exists() && snap.data().claimedLevelRewards?.includes(level)) {
+        return;
+      }
       await updateDoc(doc(db, 'users', userId), {
         money: increment(rewardGold),
         claimedLevelRewards: arrayUnion(level),
@@ -310,7 +314,7 @@ export const userService = {
     }
   },
 
-  async updateProfile(userId: string, data: { displayName?: string, photoURL?: string }) {
+  async updateProfile(userId: string, data: any) {
     if (isQuotaExceeded()) return;
     const path = `users/${userId}`;
     try {

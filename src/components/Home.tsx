@@ -17,6 +17,7 @@ export const Home: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'prof
 
   const handleTap = (e: React.MouseEvent | React.TouchEvent) => {
     if (!user) return;
+    setSessionTaps(prev => prev + 1);
     
     // UI Feedback Coordinate Logic
     const clientX = 'touches' in e ? (e as any).touches[0].clientX : (e as any).clientX;
@@ -52,6 +53,17 @@ export const Home: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'prof
   const SkinIcon = (ICONS as any)[currentSkin.icon || 'Shield'] || ICONS.Tapper;
   const rpProgress = calculateRoyalPass(profile?.score || 0).progress;
   const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [isRPModalOpen, setIsRPModalOpen] = useState(false);
+  const [rpTab, setRpTab] = useState<'rewards' | 'missions'>('rewards');
+  const [sessionTaps, setSessionTaps] = useState(0);
+  const [claimingMissions, setClaimingMissions] = useState<string[]>([]);
+  const [claimingRp, setClaimingRp] = useState<number[]>([]);
+
+  const MISSIONS = [
+    { id: 'm1', goal: 7, reward: 200, label: 'QUICK_STRIKE' },
+    { id: 'm2', goal: 100, reward: 250, label: 'STEADY_FIRE' },
+    { id: 'm3', goal: 200, reward: 300, label: 'ELITE_COMMANDER' }
+  ];
 
   useEffect(() => {
     if (!isBoostActive || !profile?.multiplierExpiry) {
@@ -107,8 +119,38 @@ export const Home: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'prof
   }, [level, prevLevel]);
 
   const currentLevelRank = LEVELS.findLast(l => level >= l.min) || LEVELS[0];
-  const { topSurvivors } = useAuth();
+  const { topSurvivors, rpRewards } = useAuth();
   const topPlayer = topSurvivors?.[0];
+
+  const handleClaimMission = async (mId: string, reward: number) => {
+    if (!user || claimingMissions.includes(mId)) return;
+    if (profile?.claimedMissions?.includes(mId)) return;
+    
+    setClaimingMissions(prev => [...prev, mId]);
+    try {
+      await userService.addBulkScore(user.uid, profile?.score || 0, reward);
+      const updatedClaimed = [...(profile?.claimedMissions || []), mId];
+      await userService.updateProfile(user.uid, { claimedMissions: updatedClaimed });
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setClaimingMissions(prev => prev.filter(id => id !== mId));
+    }
+  };
+
+  const handleClaimRpReward = async (level: number, reward: any) => {
+    if (!user || claimingRp.includes(level)) return;
+    if (profile?.claimedRpRewards?.includes(level)) return;
+
+    setClaimingRp(prev => [...prev, level]);
+    try {
+      await userService.claimRoyalPassReward(user.uid, level, reward);
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setClaimingRp(prev => prev.filter(l => l !== level));
+    }
+  };
 
   return (
     <div className="h-full flex flex-col items-center justify-center p-8 relative overflow-hidden bg-cover bg-center font-mono selection:bg-[#F2A900] selection:text-black"
@@ -249,11 +291,16 @@ export const Home: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'prof
 
       {/* Center HUD: Season Progress */}
       <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[70%] z-10 px-4">
-        <div className="bg-black/20 border border-white/5 rounded-full p-2 px-4 backdrop-blur-md relative overflow-hidden group">
+        <motion.button 
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => setIsRPModalOpen(true)}
+          className="w-full bg-black/20 border border-white/5 rounded-full p-2 px-4 backdrop-blur-md relative overflow-hidden group"
+        >
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <ICONS.Crown className="w-3 h-3 text-[#F2A900]" />
-              <span className="text-[8px] font-black italic text-white whitespace-nowrap">ELITE S1</span>
+              <span className="text-[8px] font-black italic text-white whitespace-nowrap uppercase">ROYAL_PASS</span>
             </div>
             <div className="flex-1 h-1 bg-black/50 rounded-full overflow-hidden border border-white/5 relative">
               <motion.div 
@@ -264,7 +311,7 @@ export const Home: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'prof
             </div>
             <span className="text-[8px] font-black italic text-[#F2A900]">{rpProgress}%</span>
           </div>
-        </div>
+        </motion.button>
       </div>
 
       {/* Gameplay Core */}
@@ -377,6 +424,138 @@ export const Home: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'prof
           </motion.div>
         ))}
       </AnimatePresence>
+      {/* Royal Pass Modal */}
+      <AnimatePresence>
+        {isRPModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-3xl flex items-center justify-center p-6"
+          >
+            <div className="absolute inset-0 bg-scanline opacity-10" />
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="w-full max-w-lg bg-[#111] border border-white/5 rounded-[3rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.5)] relative flex flex-col max-h-[85vh]"
+            >
+              <div className="p-8 border-b border-white/5 flex items-center justify-between">
+                <div>
+                  <h2 className="text-3xl font-black italic text-white uppercase tracking-tighter">ROYAL_PASS</h2>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="w-1 h-1 bg-[#F2A900] rounded-full animate-pulse" />
+                    <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest leading-none">SEASON 01: GENESIS PROTOCOL</span>
+                  </div>
+                </div>
+                <button onClick={() => setIsRPModalOpen(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white hover:text-black transition-all">
+                  <ICONS.Logout className="w-4 h-4 rotate-45" />
+                </button>
+              </div>
+
+              <div className="p-4 bg-black/40 flex items-center gap-2">
+                <button 
+                  onClick={() => setRpTab('rewards')}
+                  className={`flex-1 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${rpTab === 'rewards' ? 'bg-[#F2A900] text-black' : 'bg-white/5 text-gray-500'}`}
+                >
+                  REWARDS
+                </button>
+                <button 
+                  onClick={() => setRpTab('missions')}
+                  className={`flex-1 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${rpTab === 'missions' ? 'bg-[#F2A900] text-black' : 'bg-white/5 text-gray-500'}`}
+                >
+                  MISSIONS
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-6">
+                {rpTab === 'rewards' ? (
+                  <div className="grid gap-4">
+                    {rpRewards.map((reward) => {
+                      const isClaimed = profile?.claimedRpRewards?.includes(reward.level);
+                      return (
+                        <div key={reward.level} className={`p-5 rounded-3xl border flex items-center justify-between transition-all ${rpLevel >= reward.level ? 'bg-[#1A1A1A] border-[#F2A900]/20' : 'bg-black/50 border-white/5 opacity-50'}`}>
+                          <div className="flex items-center gap-6">
+                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl italic border-2 ${rpLevel >= reward.level ? 'bg-[#F2A900] border-black text-black' : 'bg-black border-white/10 text-white/20'}`}>
+                              {reward.level}
+                            </div>
+                            <div>
+                              <span className="text-[7px] font-black text-gray-500 uppercase tracking-[0.2em]">{reward.type} MODULE</span>
+                              <h4 className="text-sm font-black italic text-white uppercase">{reward.name || 'DATA_REWARD'}</h4>
+                            </div>
+                          </div>
+                          
+                          {isClaimed ? (
+                            <ICONS.Check className="w-5 h-5 text-green-500" />
+                          ) : rpLevel >= reward.level ? (
+                            <motion.button
+                              disabled={claimingRp.includes(reward.level)}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => handleClaimRpReward(reward.level, reward)}
+                              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${
+                                claimingRp.includes(reward.level) ? 'bg-white/5 text-white/20' : 'bg-[#F2A900] text-black hover:bg-white'
+                              }`}
+                            >
+                              {claimingRp.includes(reward.level) ? '...' : 'CLAIM'}
+                            </motion.button>
+                          ) : (
+                            <ICONS.Lock className="w-4 h-4 text-gray-800" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {MISSIONS.map(mission => {
+                      const isCompleted = sessionTaps >= mission.goal;
+                      const isClaimed = profile?.claimedMissions?.includes(mission.id);
+                      const progress = Math.min(100, (sessionTaps / mission.goal) * 100);
+                      
+                      return (
+                        <div key={mission.id} className="p-6 rounded-[2.5rem] bg-black/40 border border-white/5 relative overflow-hidden group">
+                           <div className="absolute top-0 right-0 p-8 bg-[#F2A900]/5 rounded-full blur-3xl" />
+                           <div className="flex items-center justify-between mb-6">
+                              <div>
+                                <h4 className="text-xl font-black italic text-white uppercase tracking-tighter leading-none mb-1">{mission.label}</h4>
+                                <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest leading-none">TAP {mission.goal} TIMES</p>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-[14px] font-black italic text-[#F2A900] leading-none">+{mission.reward} XP</span>
+                              </div>
+                           </div>
+                           
+                           <div className="relative">
+                             <div className="h-1.5 bg-white/5 rounded-full overflow-hidden mb-6">
+                               <motion.div 
+                                 initial={{ width: 0 }}
+                                 animate={{ width: `${progress}%` }}
+                                 className="h-full bg-gradient-to-r from-blue-600 to-[#F2A900]" 
+                               />
+                             </div>
+                             
+                             <button 
+                              disabled={!isCompleted || isClaimed || claimingMissions.includes(mission.id)}
+                              onClick={() => handleClaimMission(mission.id, mission.reward)}
+                              className={`w-full py-4 rounded-3xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                                isClaimed ? 'bg-white/5 text-white/10' :
+                                isCompleted ? 'bg-white text-black hover:bg-[#F2A900]' : 
+                                'bg-white/5 text-gray-500'
+                              }`}
+                             >
+                               {isClaimed ? 'SECURED' : claimingMissions.includes(mission.id) ? 'CLAIMING...' : isCompleted ? 'CLAIM XP' : `${sessionTaps} / ${mission.goal}`}
+                             </button>
+                           </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
+

@@ -395,107 +395,124 @@ export const Profile: React.FC<ProfileProps & { onNavigate?: (tab: 'home' | 'sho
             </div>
           </section>
 
-          <section>
-            <div className="h-1 w-6 bg-[#F2A900] mb-2" />
-            <h3 className="text-sm font-black text-white italic uppercase tracking-widest mb-8 flex items-center gap-3">
-              <ICONS.Settings className="w-4 h-4 text-[#F2A900]" /> ARMORY STASH
-            </h3>
-            
-            <div className="bg-[#111] border border-white/5 rounded-3xl p-8 shadow-2xl relative overflow-hidden backdrop-blur-xl">
-               {/* Background UI Lines */}
-              <div className="absolute top-0 right-0 w-full h-[1px] bg-gradient-to-l from-[#F2A900]/20 to-transparent" />
-              
-              <div className="space-y-12">
-                <div>
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex flex-col">
-                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em] flex items-center gap-3">
-                        <div className="w-2 h-2 bg-[#F2A900] rounded-full" /> TACTICAL FRAMES
-                      </label>
-                      <span className="text-[7px] font-black text-[#F2A900] uppercase tracking-widest mt-1">Tap to equip from your armory</span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-4 gap-4">
-                    {profile?.ownedFrames?.map((frameId: string) => {
-                      const frame = frames.find(f => f.id === frameId);
-                      const isSelected = profile?.selectedFrameId === frameId;
-                      return (
-                        <motion.button
-                          key={frameId}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={async () => {
-                            await userService.selectItem(user!.uid!, frameId, 'frame');
-                            if (onNavigate) onNavigate('home');
-                          }}
-                          className={`aspect-square relative rounded-2xl border-2 transition-all p-1 overflow-hidden flex items-center justify-center ${
-                            isSelected 
-                              ? 'bg-[#F2A900]/10 border-[#F2A900] shadow-[0_0_20px_rgba(242,169,0,0.3)]' 
-                              : 'bg-black border-white/5 hover:border-[#F2A900]/40'
-                          }`}
-                        >
-                          <div className="absolute inset-0 bg-scanline opacity-[0.1]" />
-                          {frame?.image ? (
-                            <img src={frame.image} alt="" className="w-full h-full object-cover rounded-xl" referrerPolicy="no-referrer" />
-                          ) : (
-                            <ICONS.Profile className={`w-8 h-8 ${isSelected ? 'text-[#F2A900]' : 'text-white/10'}`} />
-                          )}
-                          
-                          {isSelected && (
-                            <div className="absolute top-1 right-1 w-3 h-3 bg-[#F2A900] rounded-full border-2 border-black animate-pulse" />
-                          )}
-                          
-                          <div className={`absolute bottom-0 left-0 right-0 h-1 bg-[#F2A900] transition-transform ${isSelected ? 'scale-x-100' : 'scale-x-0'}`} />
-                        </motion.button>
-                      );
-                    })}
-                  </div>
+          <section className="relative z-10">
+            <header className="mb-8 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-black italic text-white tracking-tighter uppercase leading-none">ARMORY_STASH</h3>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <div className="w-1 h-1 bg-[#F2A900] rounded-full" />
+                  <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest">TACTICAL GEAR VAULT</span>
                 </div>
-
-                <div>
-                   <div className="flex items-center justify-between mb-6">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em] flex items-center gap-3">
-                      <div className="w-2 h-2 bg-red-600 rounded-full" /> COMBAT SKINS
-                    </label>
-                  </div>
-                  <div className="grid grid-cols-4 gap-4">
-                    {profile?.ownedSkins?.map((skinId: string) => {
-                      const skin = skins.find(s => s.id === skinId);
-                      const isSelected = profile?.selectedSkinId === skinId;
-                      return (
-                        <motion.button
-                          key={skinId}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={async () => {
-                            await userService.selectItem(user!.uid!, skinId, 'skin');
-                            if (onNavigate) onNavigate('home');
-                          }}
-                          className={`aspect-square relative rounded-2xl border-2 transition-all p-1 overflow-hidden flex items-center justify-center ${
-                            isSelected 
-                              ? 'bg-red-600/10 border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.2)]' 
-                              : 'bg-black border-white/5 hover:border-white/20'
-                          }`}
-                        >
-                          <div className="absolute inset-0 bg-scanline opacity-[0.1]" />
-                          {skin?.image ? (
-                            <img src={skin.image} alt="" className="w-full h-full object-contain p-2 rounded-xl" referrerPolicy="no-referrer" />
+              </div>
+            </header>
+            
+            <div className="space-y-10">
+              {/* Frames Category */}
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                   <div className="px-3 py-1 bg-[#F2A900]/10 border border-[#F2A900]/20 rounded-full">
+                      <span className="text-[8px] font-black text-[#F2A900] uppercase tracking-widest leading-none">TACTICAL_FRAMES</span>
+                   </div>
+                   <div className="h-[1px] flex-1 bg-white/5" />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  {profile?.ownedFrames?.map((frameId: string) => {
+                    const frame = frames.find(f => f.id === frameId);
+                    const isSelected = profile?.selectedFrameId === frameId;
+                    return (
+                      <motion.button
+                        key={frameId}
+                        whileHover={{ y: -4 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={async () => {
+                          await userService.selectItem(user!.uid!, frameId, 'frame');
+                          // Stay on profile as requested: "TACTICAL_FRAMES tap update profile"
+                        }}
+                        className={`group relative rounded-[2.5rem] border p-4 flex flex-col items-center transition-all shadow-2xl overflow-hidden ${
+                          isSelected 
+                            ? 'bg-[#F2A900]/5 border-[#F2A900] ring-1 ring-[#F2A900]/20' 
+                            : 'bg-white/5 border-white/5 hover:border-white/20'
+                        }`}
+                      >
+                        <div className="absolute inset-0 bg-scanline opacity-[0.03]" />
+                        <div className="w-full aspect-square relative mb-4 flex items-center justify-center">
+                          <div className={`absolute inset-4 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity ${isSelected ? 'bg-[#F2A900]' : 'bg-white'}`} />
+                          {frame?.image ? (
+                            <img src={frame.image} alt="" className="w-3/4 h-3/4 object-cover rounded-3xl relative z-10 transition-transform duration-500 group-hover:scale-110" referrerPolicy="no-referrer" />
                           ) : (
-                            <div className="flex items-center justify-center">
-                              {(() => {
-                                const SkinIcon = ICONS[skin?.icon as keyof typeof ICONS] || ICONS.Flame;
-                                return <SkinIcon className={`w-8 h-8 ${isSelected ? 'text-red-500' : 'text-white/10'}`} style={skin?.color ? { color: skin.color } : {}} />;
-                              })()}
+                            <ICONS.Profile className={`w-1/2 h-1/2 relative z-10 ${isSelected ? 'text-[#F2A900]' : 'text-white/10'}`} />
+                          )}
+                        </div>
+                        
+                        <div className="w-full text-center pb-2">
+                          <h4 className="text-[10px] font-black italic text-white uppercase truncate px-2">{frame?.name || 'GENERIC_ID'}</h4>
+                          {isSelected && (
+                            <div className="mt-1 flex items-center justify-center gap-1.5">
+                              <div className="w-1 h-1 bg-[#F2A900] rounded-full animate-pulse" />
+                              <span className="text-[6px] font-black text-[#F2A900] uppercase tracking-widest">ACTIVE_MODULE</span>
                             </div>
                           )}
-                          
-                          {isSelected && (
-                            <div className="absolute top-1 right-1 w-3 h-3 bg-red-600 rounded-full border-2 border-black animate-pulse" />
+                        </div>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Skins Category */}
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                   <div className="px-3 py-1 bg-red-600/10 border border-red-600/20 rounded-full">
+                      <span className="text-[8px] font-black text-red-500 uppercase tracking-widest leading-none">EQUIPMENT_SKINS</span>
+                   </div>
+                   <div className="h-[1px] flex-1 bg-white/5" />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  {profile?.ownedSkins?.map((skinId: string) => {
+                    const skin = skins.find(s => s.id === skinId);
+                    const isSelected = profile?.selectedSkinId === skinId;
+                    const SkinIcon = ICONS[skin?.icon as keyof typeof ICONS] || ICONS.Shield;
+                    
+                    return (
+                      <motion.button
+                        key={skinId}
+                        whileHover={{ y: -4 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={async () => {
+                          await userService.selectItem(user!.uid!, skinId, 'skin');
+                          // Navigate to home as requested: "EQUIPMENT_SKINS tap update home"
+                          if (onNavigate) onNavigate('home');
+                        }}
+                        className={`group relative rounded-[2.5rem] border p-4 flex flex-col items-center transition-all shadow-2xl overflow-hidden ${
+                          isSelected 
+                            ? 'bg-red-600/5 border-red-600 ring-1 ring-red-600/20' 
+                            : 'bg-white/5 border-white/5 hover:border-white/20'
+                        }`}
+                      >
+                        <div className="absolute inset-0 bg-scanline opacity-[0.03]" />
+                        <div className="w-full aspect-square relative mb-4 flex items-center justify-center">
+                          <div className={`absolute inset-4 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity ${isSelected ? 'bg-red-600' : 'bg-white'}`} />
+                          {skin?.image ? (
+                            <img src={skin.image} alt="" className="w-3/4 h-3/4 object-contain relative z-10 transition-transform duration-500 group-hover:scale-110" referrerPolicy="no-referrer" />
+                          ) : (
+                            <SkinIcon className={`w-1/2 h-1/2 relative z-10 transition-colors ${isSelected ? 'text-red-600' : 'text-white/10'}`} />
                           )}
-                        </motion.button>
-                      );
-                    })}
-                  </div>
+                        </div>
+                        
+                        <div className="w-full text-center pb-2">
+                          <h4 className="text-[10px] font-black italic text-white uppercase truncate px-2">{skin?.name || 'GENERIC_SKIN'}</h4>
+                          {isSelected && (
+                            <div className="mt-1 flex items-center justify-center gap-1.5">
+                              <div className="w-1 h-1 bg-red-600 rounded-full animate-pulse" />
+                              <span className="text-[6px] font-black text-red-600 uppercase tracking-widest">ACTIVE_SKIN</span>
+                            </div>
+                          )}
+                        </div>
+                      </motion.button>
+                    );
+                  })}
                 </div>
               </div>
             </div>

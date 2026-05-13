@@ -19,12 +19,17 @@ export const RoyalPass: React.FC = () => {
   const currentLevelPoints = score % pointsPerLevel;
   const progress = rpLevel >= 25 ? 100 : (currentLevelPoints / pointsPerLevel) * 100;
 
+  const [claimingLevels, setClaimingLevels] = useState<number[]>([]);
+
   const handleClaim = async (level: number, reward: any) => {
-    if (!user) return;
+    if (!user || claimingLevels.includes(level)) return;
+    setClaimingLevels(prev => [...prev, level]);
     try {
       await userService.claimRoyalPassReward(user.uid, level, reward);
     } catch (e: any) {
       alert(e.message);
+    } finally {
+      setClaimingLevels(prev => prev.filter(l => l !== level));
     }
   };
 
@@ -217,11 +222,14 @@ export const RoyalPass: React.FC = () => {
                 <div className="shrink-0 ml-4">
                   {isUnlocked && !isClaimed ? (
                     <motion.button 
+                      disabled={claimingLevels.includes(reward.level)}
                       whileTap={{ scale: 0.9 }}
                       onClick={() => handleClaim(reward.level, reward)}
-                      className="bg-[#F2A900] text-black w-24 py-3 rounded-xl font-black text-[9px] uppercase shadow-lg shadow-[#F2A900]/20 hover:bg-white transition-all transform active:scale-95"
+                      className={`w-24 py-3 rounded-xl font-black text-[9px] uppercase shadow-lg transition-all transform active:scale-95 ${
+                        claimingLevels.includes(reward.level) ? 'bg-white/10 text-white/20' : 'bg-[#F2A900] text-black shadow-[#F2A900]/20 hover:bg-white'
+                      }`}
                     >
-                      COLLECT
+                      {claimingLevels.includes(reward.level) ? 'SYNCING...' : 'COLLECT'}
                     </motion.button>
                   ) : isClaimed ? (
                     <div className="flex flex-col items-center justify-center px-4">
