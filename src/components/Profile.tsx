@@ -424,7 +424,10 @@ export const Profile: React.FC<ProfileProps & { onNavigate?: (tab: 'home' | 'sho
                           key={frameId}
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => userService.selectItem(user!.uid!, frameId, 'frame')}
+                          onClick={async () => {
+                            await userService.selectItem(user!.uid!, frameId, 'frame');
+                            if (onNavigate) onNavigate('home');
+                          }}
                           className={`aspect-square relative rounded-2xl border-2 transition-all p-1 overflow-hidden flex items-center justify-center ${
                             isSelected 
                               ? 'bg-[#F2A900]/10 border-[#F2A900] shadow-[0_0_20px_rgba(242,169,0,0.3)]' 
@@ -464,7 +467,10 @@ export const Profile: React.FC<ProfileProps & { onNavigate?: (tab: 'home' | 'sho
                           key={skinId}
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
-                          onClick={() => userService.selectItem(user!.uid!, skinId, 'skin')}
+                          onClick={async () => {
+                            await userService.selectItem(user!.uid!, skinId, 'skin');
+                            if (onNavigate) onNavigate('home');
+                          }}
                           className={`aspect-square relative rounded-2xl border-2 transition-all p-1 overflow-hidden flex items-center justify-center ${
                             isSelected 
                               ? 'bg-red-600/10 border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.2)]' 

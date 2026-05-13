@@ -24,7 +24,8 @@ import {
   Bell,
   Fingerprint,
   ChevronRight,
-  Zap as ZapIcon
+  Zap as ZapIcon,
+  Search
 } from 'lucide-react';
 
 export const calculateLevel = (score: number) => {
@@ -70,7 +71,8 @@ export const ICONS = {
   Notification: Bell,
   Security: Fingerprint,
   Chevron: ChevronRight,
-  ZapIcon: ZapIcon
+  ZapIcon: ZapIcon,
+  Search: Search
 };
 
 export const LEVELS = [

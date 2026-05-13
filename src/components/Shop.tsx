@@ -9,10 +9,7 @@ import { db } from '../lib/firebase';
 export const Shop: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'profile' | 'settings') => void }> = ({ onNavigate }) => {
   const { profile, user, pendingScore, forceSync, isSyncing, refreshProfile, frames, skins: contextSkins } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    if (!user) return;
-  }, [user]);
+  const [activeCategory, setActiveCategory] = useState<'all' | 'frames' | 'skins' | 'boosts'>('all');
 
   const handlePurchase = async (item: any, type: 'frame' | 'skin') => {
     if (!user) return;
@@ -21,6 +18,7 @@ export const Shop: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'prof
     if (ownedList?.includes(item.id)) {
        await userService.selectItem(user.uid, item.id, type);
        await refreshProfile();
+       if (onNavigate) onNavigate('home');
        return;
     }
     
@@ -29,180 +27,110 @@ export const Shop: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'prof
         setIsLoading(true);
         await userService.purchaseItem(user.uid, item.id, type, item.cost);
         await refreshProfile();
+        if (onNavigate) onNavigate('home');
       } catch (e: any) {
         alert(e.message);
       } finally {
         setIsLoading(false);
       }
     } else {
-      alert("You need more gold! Complete level milestones to earn rewards.");
+      alert("INSUFFICIENT FUNDS. TRANSMIT MORE DATA.");
     }
-  };
-
-  const seedData = async () => {
-    for (const f of SHORE_ITEMS.frames) await userService.addFrame(f);
-    for (const s of SHORE_ITEMS.skins) await userService.addSkin(s);
   };
 
   const allFrames = frames.length > 0 ? frames : SHORE_ITEMS.frames;
   const allSkins = contextSkins.length > 0 ? contextSkins : SHORE_ITEMS.skins;
 
-  return (
-    <div className="p-6 bg-[#070707] min-h-full font-mono selection:bg-[#F2A900] selection:text-black pb-32">
-      {/* Background FX Layers */}
-      <div className="fixed inset-0 bg-noise opacity-[0.02] pointer-events-none" />
-      <div className="fixed inset-0 bg-scanline opacity-[0.04] pointer-events-none" />
+  const CATEGORIES = [
+    { id: 'all', name: 'ALL_GEAR', icon: ICONS.Tapper },
+    { id: 'frames', name: 'FRAMES', icon: ICONS.Crown },
+    { id: 'skins', name: 'EQUIPMENT', icon: ICONS.Shield },
+    { id: 'boosts', name: 'STEROIDS', icon: ICONS.Zap }
+  ];
 
-      {isLoading ? (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
-          <div className="relative">
-            <ICONS.Tapper className="w-16 h-16 text-[#F2A900] animate-spin" />
-            <div className="absolute inset-0 bg-[#F2A900] blur-2xl opacity-20 animate-pulse" />
-          </div>
-          <div className="flex flex-col items-center gap-1">
-            <p className="text-[#F2A900] text-[10px] font-black uppercase tracking-[0.4em] animate-pulse">CONNECTING_TO_ARMORY_SERVER</p>
-            <div className="w-32 h-0.5 bg-white/5 overflow-hidden">
-               <motion.div animate={{ x: ['-100%', '100%'] }} transition={{ repeat: Infinity, duration: 1.5 }} className="w-1/2 h-full bg-[#F2A900]" />
+  return (
+    <div className="p-6 bg-[#0a0a0a] min-h-screen font-mono selection:bg-[#F2A900] selection:text-black">
+      {/* Background Decor */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#F2A900] opacity-[0.03] blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-500 opacity-[0.02] blur-[120px] rounded-full" />
+        <div className="absolute inset-0 bg-scanline opacity-[0.05]" />
+      </div>
+
+      <div className="relative z-10 max-w-2xl mx-auto pb-40">
+        {/* Header Section */}
+        <header className="mb-10 pt-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-black italic text-white tracking-tighter uppercase leading-none">THE_MARKET</h1>
+            <div className="mt-2 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 bg-red-600 rounded-full animate-pulse" />
+              <span className="text-[8px] font-black text-gray-500 uppercase tracking-[0.3em]">SECURE CONNECTION ESTABLISHED</span>
             </div>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-3 flex items-center gap-3 backdrop-blur-xl">
+             <ICONS.Zap className="w-4 h-4 text-yellow-400" />
+             <span className="text-sm font-black italic text-white">{profile?.money?.toLocaleString() || 0} G</span>
+          </div>
+        </header>
+
+        {/* Search & Categories (Aesthetic from image) */}
+        <div className="mb-8 space-y-6">
+          <div className="relative group">
+            <ICONS.Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600 group-focus-within:text-[#F2A900] transition-colors" />
+            <input 
+              type="text" 
+              placeholder="SEARCH_ARMORY..."
+              className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-xs text-white uppercase font-black outline-none focus:border-[#F2A900]/30 transition-all placeholder:text-gray-700"
+            />
+          </div>
+
+          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-2">
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id as any)}
+                className={`shrink-0 px-6 py-2.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border ${
+                  activeCategory === cat.id 
+                    ? 'bg-white text-black border-white' 
+                    : 'bg-white/5 text-gray-500 border-white/5 hover:border-white/20'
+                }`}
+              >
+                {cat.name}
+              </button>
+            ))}
           </div>
         </div>
-      ) : (
-        <>
-          <div className="mb-12 flex justify-between items-start relative z-10">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="h-[2px] w-8 bg-[#F2A900]" />
-                <span className="text-[10px] font-black text-[#F2A900] uppercase tracking-[0.4em]">Section: Black Market</span>
-              </div>
-              <h2 className="text-4xl font-black italic tracking-tighter text-white uppercase drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]">ARMORY SHOP</h2>
-            </div>
-            
-            <div className="flex flex-col items-end gap-3 bg-black/60 backdrop-blur-md p-4 rounded-2xl border border-white/5 shadow-2xl">
-              <div className="flex items-center gap-4 bg-white/5 px-4 py-2 rounded-xl border border-white/5 group transition-all hover:border-[#F2A900]/30">
-                <div className="w-8 h-8 rounded-lg bg-[#F2A900]/10 flex items-center justify-center">
-                  <ICONS.Flame className="w-4 h-4 text-[#F2A900]" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest leading-none mb-1">TOTAL_DINNERS</span>
-                  <span className="text-sm font-black text-white italic leading-none">
-                    {((profile?.score || 0) + pendingScore).toLocaleString()}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-4 bg-white/5 px-4 py-2 rounded-xl border border-white/5 group transition-all hover:border-yellow-400/30">
-                <div className="w-8 h-8 rounded-lg bg-yellow-400/10 flex items-center justify-center">
-                  <ICONS.Zap className="w-4 h-4 text-yellow-400" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest leading-none mb-1">AVAILABLE_GOLD</span>
-                  <span className="text-sm font-black text-white italic leading-none">{profile?.money || 0}</span>
-                </div>
-              </div>
-              
-              {frames.length === 0 && (
-                <button onClick={seedData} className="text-[8px] text-[#F2A900] font-black uppercase tracking-widest hover:underline mt-1">REBOOT_SHOP_SERVICES</button>
-              )}
-            </div>
+
+        {isLoading ? (
+          <div className="py-20 flex flex-col items-center">
+            <ICONS.Tapper className="w-12 h-12 text-[#F2A900] animate-spin mb-4" />
+            <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest">DECRYPTING...</p>
           </div>
-
-          {/* Pending Sync */}
-          {pendingScore > 0 && (
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-12">
-              <button
-                onClick={forceSync}
-                disabled={isSyncing}
-                className="w-full h-20 bg-gradient-to-r from-red-600/20 to-[#F2A900]/20 border-2 border-[#F2A900]/30 rounded-3xl flex items-center justify-center gap-6 font-black uppercase italic tracking-widest text-xs transition-all hover:border-[#F2A900] group relative overflow-hidden"
-              >
-                <div className="absolute inset-0 bg-scanline opacity-[0.05]" />
-                {isSyncing ? (
-                  <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1.5 }}>ENCRYPTING_PROGRESS_DATA...</motion.span>
-                ) : (
-                  <>
-                    <div className="flex flex-col items-start leading-none gap-1">
-                       <span className="text-[8px] text-[#F2A900] tracking-[0.4em] not-italic">SECURITY_SYNC_PENDING</span>
-                       <span className="text-white text-xl">SAVE {pendingScore} UNSYNCED DINNERS</span>
-                    </div>
-                    <ICONS.Chevron className="w-6 h-6 text-[#F2A900] group-hover:translate-x-2 transition-transform" />
-                  </>
-                )}
-              </button>
-            </motion.div>
-          )}
-
-          {/* Main Shop Sections */}
-          <div className="space-y-16 relative z-10">
-            {/* Frames */}
-            <section>
-              <div className="flex items-center gap-4 mb-8">
-                <div className="h-1 w-8 bg-[#F2A900]" />
-                <h3 className="text-sm font-black text-white italic uppercase tracking-[0.4em]">TACTICAL_FRAMES</h3>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {allFrames.map(frame => (
-                  <motion.div 
-                    key={frame.id}
-                    whileHover={{ y: -5 }}
-                    className={`p-5 rounded-3xl border-2 transition-all relative group overflow-hidden shadow-2xl ${
-                      profile?.selectedFrameId === frame.id 
-                        ? 'bg-[#F2A900]/5 border-[#F2A900] shadow-[0_0_30px_rgba(242,169,0,0.1)]' 
-                        : 'bg-[#111] border-white/5 hover:border-white/20'
-                    }`}
-                  >
-                    <div className="absolute inset-0 bg-scanline opacity-[0.03]" />
-                    <div className="aspect-square bg-black rounded-2xl mb-5 flex items-center justify-center overflow-hidden border border-white/5 relative shadow-inner">
-                      {frame.image ? (
-                        <img src={frame.image} alt={frame.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" />
-                      ) : (
-                        <ICONS.Profile className="w-12 h-12 text-white/5" />
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
-                    </div>
-                    <h4 className="font-black text-xs mb-4 truncate uppercase italic tracking-tighter text-white" style={frame.color ? { color: frame.color } : {}}>{frame.name}</h4>
-                    <button 
-                      onClick={() => handlePurchase(frame, 'frame')}
-                      className={`w-full py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                        profile?.ownedFrames?.includes(frame.id)
-                          ? profile?.selectedFrameId === frame.id 
-                            ? 'bg-[#F2A900] text-black shadow-xl shadow-[#F2A900]/20' 
-                            : 'bg-white/5 text-white/30 hover:bg-white/10 hover:text-white border border-white/5'
-                          : 'bg-white text-black hover:bg-[#F2A900] shadow-2xl'
-                      }`}
-                    >
-                      {profile?.ownedFrames?.includes(frame.id) 
-                        ? profile?.selectedFrameId === frame.id ? 'ACTIVE' : 'EQUIP' 
-                        : `${frame.cost} G`}
-                    </button>
-                  </motion.div>
-                ))}
-              </div>
-            </section>
-
-            {/* Boosts */}
-            <section>
-              <div className="flex items-center gap-4 mb-8">
-                <div className="h-1 w-8 bg-blue-500" />
-                <h3 className="text-sm font-black text-white italic uppercase tracking-[0.4em]">COMBAT_OVERDRIVE</h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            {/* Boosts (Special Layout) */}
+            {(activeCategory === 'all' || activeCategory === 'boosts') && (
+              <>
+                <div className="col-span-2 mt-4 mb-2">
+                  <span className="text-[10px] font-black text-gray-700 uppercase tracking-[0.4em]">STEROIDS_&_BOOSTS</span>
+                </div>
                 {[
-                  { mult: 2, cost: 400, color: 'blue' },
-                  { mult: 4, cost: 1200, color: '#F2A900' }
-                ].map((boost, idx) => (
+                  { id: 'boost2', name: 'SPEED_OVERDRIVE', mult: 2, cost: 400, desc: '2X DINNERS (60S)' },
+                  { id: 'boost4', name: 'ELITE_SCAN', mult: 4, cost: 1200, desc: '4X DINNERS (60S)' }
+                ].map(boost => (
                   <motion.div 
-                    key={idx}
-                    whileHover={{ scale: 1.02 }}
-                    className="bg-[#111] border border-white/5 p-8 rounded-[2.5rem] flex items-center justify-between group hover:border-white/20 transition-all relative overflow-hidden shadow-2xl"
+                    key={boost.id}
+                    whileHover={{ y: -4 }}
+                    className="col-span-2 bg-gradient-to-br from-[#111] to-black border border-white/5 rounded-[2.5rem] p-6 flex items-center justify-between shadow-2xl relative overflow-hidden group"
                   >
-                    <div className="absolute inset-0 bg-scanline opacity-10" />
-                    <div className="flex items-center gap-8 relative z-10">
-                      <div className={`w-20 h-20 rounded-2xl flex items-center justify-center border-2 shadow-2xl relative ${boost.mult === 4 ? 'bg-[#F2A900]/10 border-[#F2A900]/30' : 'bg-blue-500/10 border-blue-500/30'}`}>
-                        <ICONS.Zap className={`w-10 h-10 drop-shadow-2xl ${boost.mult === 4 ? 'text-[#F2A900]' : 'text-blue-500'}`} />
-                        <div className={`absolute -top-2 -right-2 font-black italic rounded-lg px-2 py-1 text-black text-xs ${boost.mult === 4 ? 'bg-[#F2A900]' : 'bg-blue-500'}`}>{boost.mult}X</div>
+                    <div className="absolute top-0 right-0 p-8 bg-blue-500/10 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="flex items-center gap-6 relative z-10">
+                      <div className="w-16 h-16 rounded-3xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:border-blue-500/40 transition-all">
+                        <ICONS.Zap className={`w-8 h-8 ${boost.mult === 4 ? 'text-yellow-400' : 'text-blue-500'}`} />
                       </div>
                       <div>
-                        <h4 className="font-black italic text-2xl text-white leading-none mb-2 uppercase tracking-tighter">{boost.mult === 4 ? 'ELITE' : 'OVERDRIVE'} SCAN</h4>
-                        <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em]">{boost.mult}X DINNER MULTIPLIER (60S)</p>
+                        <h3 className="font-black italic text-lg text-white uppercase leading-none mb-1">{boost.name}</h3>
+                        <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest">{boost.desc}</p>
                       </div>
                     </div>
                     <button 
@@ -214,65 +142,122 @@ export const Shop: React.FC<{ onNavigate?: (tab: 'home' | 'shop' | 'top' | 'prof
                           } catch (e: any) { alert(e.message); }
                         } else { alert("INSUFFICIENT_FUNDS"); }
                       }}
-                      className={`h-20 px-10 rounded-2xl font-black uppercase text-xs tracking-widest transition-all shadow-2xl active:scale-95 ${boost.mult === 4 ? 'bg-[#F2A900] text-black hover:bg-white' : 'bg-blue-600 text-white hover:bg-blue-500'}`}
+                      className="bg-white text-black px-8 py-4 rounded-3xl font-black text-[10px] uppercase tracking-widest hover:bg-yellow-400 transition-all active:scale-95"
                     >
                       {boost.cost} G
                     </button>
                   </motion.div>
                 ))}
-              </div>
-            </section>
+              </>
+            )}
 
-            {/* Skins */}
-            <section>
-              <div className="flex items-center gap-4 mb-8">
-                <div className="h-1 w-8 bg-red-600" />
-                <h3 className="text-sm font-black text-white italic uppercase tracking-[0.4em]">TACTICAL_SKINS</h3>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {allSkins.map(skin => {
-                  const SkinIcon = (ICONS as any)[skin.icon || 'Shield'] || ICONS.Tapper;
-                  const isSelected = profile?.selectedSkinId === skin.id;
-                  const isOwned = profile?.ownedSkins?.includes(skin.id);
-
+            {/* Frames Grid */}
+            {(activeCategory === 'all' || activeCategory === 'frames') && (
+              <>
+                <div className="col-span-2 mt-10 mb-2">
+                  <span className="text-[10px] font-black text-gray-700 uppercase tracking-[0.4em]">TACTICAL_FRAMES</span>
+                </div>
+                {allFrames.map(frame => {
+                  const isOwned = profile?.ownedFrames?.includes(frame.id);
+                  const isSelected = profile?.selectedFrameId === frame.id;
+                  
                   return (
                     <motion.div 
-                      key={skin.id}
-                      whileHover={{ y: -5 }}
-                      className={`p-5 rounded-3xl border-2 transition-all relative group overflow-hidden shadow-2xl ${
-                        isSelected 
-                          ? 'bg-red-600/5 border-red-600 shadow-[0_0_30px_rgba(220,38,38,0.1)]' 
-                          : 'bg-[#111] border-white/5 hover:border-white/20'
-                      }`}
+                      key={frame.id}
+                      whileHover={{ y: -8 }}
+                      className="bg-[#111] border border-white/5 rounded-[2.5rem] p-4 flex flex-col items-center shadow-2xl relative overflow-hidden group"
                     >
-                      <div className="absolute inset-0 bg-scanline opacity-10" />
-                      <div className="aspect-square bg-black rounded-2xl mb-5 flex items-center justify-center border border-white/5 relative shadow-inner">
-                         {skin.image ? (
-                            <img src={skin.image} alt="" className="w-full h-full object-contain p-4 transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" />
-                         ) : (
-                            <SkinIcon className={`w-12 h-12 transition-colors ${isSelected ? 'text-red-500 shadow-2xl' : 'text-white/5'}`} style={skin.color ? { color: skin.color } : {}} />
-                         )}
-                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
+                      <div className="absolute top-2 right-4 flex flex-col items-end">
+                         <div className="px-2 py-1 bg-black/40 rounded-full border border-white/5">
+                            <span className="text-[8px] font-black text-yellow-400">{frame.cost}G</span>
+                         </div>
                       </div>
-                      <h4 className="font-black text-xs mb-4 truncate uppercase italic tracking-tighter text-white" style={skin.color ? { color: skin.color } : {}}>{skin.name}</h4>
+                      
+                      <div className="w-full aspect-square relative mb-4 flex items-center justify-center">
+                        <div className="absolute inset-4 bg-white/5 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity" />
+                        {frame.image ? (
+                          <img src={frame.image} alt="" className="w-3/4 h-3/4 object-cover rounded-3xl relative z-10 transition-transform duration-500 group-hover:scale-110" referrerPolicy="no-referrer" />
+                        ) : (
+                          <ICONS.Profile className="w-1/2 h-1/2 text-white/5" />
+                        )}
+                      </div>
+
+                      <div className="w-full px-2 text-center mb-4">
+                        <h4 className="text-[11px] font-black italic text-white uppercase truncate">{frame.name}</h4>
+                        <span className="text-[7px] font-black text-gray-600 uppercase tracking-widest">TACTICAL_SKIN</span>
+                      </div>
+
                       <button 
-                        onClick={() => handlePurchase(skin, 'skin')}
-                        className={`w-full py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                          isOwned
-                            ? isSelected ? 'bg-red-600 text-black shadow-xl shadow-red-600/20' : 'bg-white/5 text-white/30 hover:bg-white/10 hover:text-white border border-white/5'
-                            : 'bg-white text-black hover:bg-red-600 shadow-2xl'
+                        onClick={() => handlePurchase(frame, 'frame')}
+                        className={`w-full py-4 rounded-[1.8rem] text-[9px] font-black uppercase tracking-widest transition-all ${
+                          isOwned 
+                            ? isSelected ? 'bg-yellow-400 text-black' : 'bg-white/5 text-white/40 border border-white/5' 
+                            : 'bg-white text-black hover:bg-yellow-400'
                         }`}
                       >
-                        {isOwned ? (isSelected ? 'ACTIVE' : 'EQUIP') : `${skin.cost} G`}
+                        {isOwned ? (isSelected ? 'ACTIVE' : 'EQUIP') : 'ACQUIRE'}
                       </button>
                     </motion.div>
                   );
                 })}
-              </div>
-            </section>
+              </>
+            )}
+
+            {/* Skins Grid */}
+            {(activeCategory === 'all' || activeCategory === 'skins') && (
+              <>
+                <div className="col-span-2 mt-10 mb-2">
+                  <span className="text-[10px] font-black text-gray-700 uppercase tracking-[0.4em]">SURVIVAL_GEAR</span>
+                </div>
+                {allSkins.map(skin => {
+                  const isOwned = profile?.ownedSkins?.includes(skin.id);
+                  const isSelected = profile?.selectedSkinId === skin.id;
+                  const SkinIcon = (ICONS as any)[skin.icon || 'Shield'] || ICONS.Shield;
+                  
+                  return (
+                    <motion.div 
+                      key={skin.id}
+                      whileHover={{ y: -8 }}
+                      className="bg-[#111] border border-white/5 rounded-[2.5rem] p-4 flex flex-col items-center shadow-2xl relative overflow-hidden group"
+                    >
+                      <div className="absolute top-2 right-4">
+                         <div className="px-2 py-1 bg-black/40 rounded-full border border-white/5">
+                            <span className="text-[8px] font-black text-red-500">{skin.cost}G</span>
+                         </div>
+                      </div>
+                      
+                      <div className="w-full aspect-square relative mb-4 flex items-center justify-center">
+                        <div className="absolute inset-4 bg-red-600/5 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity" />
+                        {skin.image ? (
+                           <img src={skin.image} alt="" className="w-3/4 h-3/4 object-contain relative z-10 transition-transform duration-500 group-hover:scale-110" referrerPolicy="no-referrer" />
+                        ) : (
+                          <SkinIcon className="w-1/2 h-1/2 text-white/10 group-hover:text-red-500 transition-colors" />
+                        )}
+                      </div>
+
+                      <div className="w-full px-2 text-center mb-4">
+                        <h4 className="text-[11px] font-black italic text-white uppercase truncate">{skin.name}</h4>
+                        <span className="text-[7px] font-black text-gray-600 uppercase tracking-widest">TACTICAL_SKIN</span>
+                      </div>
+
+                      <button 
+                        onClick={() => handlePurchase(skin, 'skin')}
+                        className={`w-full py-4 rounded-[1.8rem] text-[9px] font-black uppercase tracking-widest transition-all ${
+                          isOwned 
+                            ? isSelected ? 'bg-red-600 text-white' : 'bg-white/5 text-white/40 border border-white/5' 
+                            : 'bg-white text-black hover:bg-red-600'
+                        }`}
+                      >
+                        {isOwned ? (isSelected ? 'ACTIVE' : 'EQUIP') : 'ACQUIRE'}
+                      </button>
+                    </motion.div>
+                  );
+                })}
+              </>
+            )}
           </div>
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 };
