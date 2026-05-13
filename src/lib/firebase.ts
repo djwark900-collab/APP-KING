@@ -36,10 +36,11 @@ export function isQuotaExceeded() {
   const lastErrorDate = new Date(lastErrorTime);
   const now = new Date();
   
-  const h12passed = (now.getTime() - lastErrorTime > 12 * 60 * 60 * 1000);
+  // Reset if more than 2 hours passed OR if a new UTC day started
+  const h2passed = (now.getTime() - lastErrorTime > 2 * 60 * 60 * 1000);
   const newDayStarted = now.getUTCDate() !== lastErrorDate.getUTCDate();
   
-  if (h12passed || newDayStarted) {
+  if (h2passed || newDayStarted) {
     localStorage.removeItem('quota_error_time');
     return false;
   }
@@ -50,10 +51,11 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   const err = error as any;
   const isQuota = err?.message?.toLowerCase().includes("quota") || 
                   err?.code === "resource-exhausted" || 
-                  err?.code === "unavailable" ||
                   err?.message?.includes("Quota exceeded");
+  
+  const isUnavailable = err?.code === "unavailable" || err?.message?.includes("offline");
 
-  if (isQuota && typeof window !== 'undefined') {
+  if ((isQuota || isUnavailable) && typeof window !== 'undefined') {
     localStorage.setItem('quota_error_time', Date.now().toString());
   }
   
@@ -68,11 +70,27 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     path
   };
   
-  if (isQuota) {
-    console.warn('Firestore Quota Exceeded. Service will be limited until reset.');
+  if (isQuota || isUnavailable) {
+    console.warn(`Firestore ${isUnavailable ? 'Connection' : 'Quota'} issue. Service will be limited until reset.`);
   } else {
     console.error('Firestore Error: ', JSON.stringify(errInfo));
   }
   
   throw new Error(JSON.stringify(errInfo));
 }
+
+// Validation connection to Firestore on boot
+async function validateConnection() {
+  if (typeof window === 'undefined') return;
+  try {
+    // Attempt a low-cost read from a non-existent doc to check connectivity
+    await getDocFromServer(doc(db, '_internal_', 'health'));
+  } catch (error: any) {
+    if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
+      console.warn("Firestore connection unavailable at boot.");
+      localStorage.setItem('quota_error_time', Date.now().toString());
+    }
+  }
+}
+
+validateConnection();

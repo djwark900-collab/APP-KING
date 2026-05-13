@@ -79,6 +79,8 @@ export const ICONS = {
   Chevron: ChevronRight,
   Live: Radio,
   LiveOff: MicOff,
+  MicOff: MicOff,
+  Mic: Mic,
   Voice: Mic,
   Users: Users,
   Gift: Gift,

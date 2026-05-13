@@ -12,6 +12,7 @@ export const LiveRooms: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [newRoomName, setNewRoomName] = useState('');
   const [showGiftMenu, setShowGiftMenu] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [activeGifts, setActiveGifts] = useState<{ id: string; type: string }[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -79,6 +80,47 @@ export const LiveRooms: React.FC = () => {
     }
   };
 
+  const handleTakeMic = async (index: number) => {
+    if (!activeRoom || !!activeRoom.micSlots?.[index]) return;
+    try {
+      await roomService.takeMicSlot(activeRoom.id, index);
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleToggleMute = async (index: number) => {
+    if (!activeRoom || !activeRoom.micSlots?.[index]) return;
+    const slot = activeRoom.micSlots[index];
+    if (slot.userId !== profile?.uid) return;
+    try {
+      await roomService.toggleMicMute(activeRoom.id, index, !slot.isMuted);
+    } catch (err: any) {
+      console.error(err);
+    }
+  };
+
+  const handleLeaveMic = async (index: number) => {
+    if (!activeRoom || !activeRoom.micSlots?.[index]) return;
+    const slot = activeRoom.micSlots[index];
+    if (slot.userId !== profile?.uid && profile?.uid !== activeRoom.hostId) return;
+    try {
+      await roomService.leaveMicSlot(activeRoom.id, index);
+    } catch (err: any) {
+      console.error(err);
+    }
+  };
+
+  const handleUpdateMicSlots = async (count: number) => {
+    if (!activeRoom) return;
+    try {
+      await roomService.updateRoomSettings(activeRoom.id, { maxMics: count });
+      setShowSettings(false);
+    } catch (err: any) {
+      console.error(err);
+    }
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputMessage.trim() || !activeRoom) return;
@@ -140,42 +182,99 @@ export const LiveRooms: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-             <button 
-               onClick={() => {
-                 if (profile?.uid === activeRoom.hostId && confirm("End and DELETE this live session?")) {
-                   roomService.endRoom(activeRoom.id).then(() => setActiveRoom(null));
-                 }
-               }}
-               className={`flex items-center gap-2 px-3 py-1 rounded-full border transition-all ${
-                 profile?.uid === activeRoom.hostId ? 'hover:bg-red-600 hover:text-white cursor-pointer bg-red-600/10 border-red-600/20' : 'bg-red-600/10 border-red-600/20'
-               }`}
-             >
-               <div className="flex gap-0.5 items-end h-3">
-                 {[1, 2, 3, 4].map(i => (
-                   <motion.div 
-                     key={i}
-                     animate={{ height: [4, 12, 6, 12, 4] }}
-                     transition={{ repeat: Infinity, duration: 1, delay: i * 0.1 }}
-                     className="w-1 bg-red-600 rounded-full"
-                   />
-                 ))}
-               </div>
-               <span className="text-[9px] font-black italic text-red-500 uppercase tracking-tighter group-hover:text-white">MIC LIVE</span>
-             </button>
+          <div className="flex items-center gap-2">
              {profile?.uid === activeRoom.hostId && (
                <button 
-                 onClick={async () => {
-                   if (confirm("End and DELETE this live session?")) {
-                     await roomService.endRoom(activeRoom.id);
-                     setActiveRoom(null);
-                   }
-                 }}
-                 className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase shadow-lg shadow-red-600/20 hover:scale-105 active:scale-95 transition-all"
+                 onClick={() => setShowSettings(true)}
+                 className="p-2.5 bg-white/5 text-gray-400 rounded-xl hover:text-white hover:bg-white/10 transition-all border border-white/5"
                >
-                 END LIVE
+                 <ICONS.Settings className="w-5 h-5" />
                </button>
              )}
+          </div>
+        </div>
+
+        {/* Mic Grid */}
+        <div className="bg-[#111] p-4 border-b border-white/5">
+          <div className={`grid ${activeRoom.maxMics === 2 ? 'grid-cols-2' : activeRoom.maxMics === 6 ? 'grid-cols-3' : 'grid-cols-2'} gap-4`}>
+            {Array.from({ length: activeRoom.maxMics || 4 }).map((_, i) => {
+              const slot = activeRoom.micSlots?.[i];
+              const isMe = slot?.userId === profile?.uid;
+              return (
+                <div key={i} className="flex flex-col items-center gap-2">
+                  <motion.button 
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      if (slot) {
+                        if (isMe) handleToggleMute(i);
+                      } else {
+                        handleTakeMic(i);
+                      }
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      if (slot && (isMe || profile?.uid === activeRoom.hostId)) handleLeaveMic(i);
+                    }}
+                    className={`w-16 h-16 rounded-3xl border-2 flex items-center justify-center relative transition-all group overflow-hidden ${
+                      slot 
+                        ? (slot.isMuted ? 'border-red-600/50 bg-red-600/5' : 'border-[#F2A900] bg-[#F2A900]/10') 
+                        : 'border-white/5 bg-black hover:border-white/20 border-dashed'
+                    }`}
+                  >
+                    {slot ? (
+                      <>
+                        <div className="absolute inset-0">
+                          {slot.photoURL ? (
+                            <img src={slot.photoURL} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-gray-800 to-black flex items-center justify-center">
+                              <ICONS.Profile className={`w-8 h-8 ${slot.isMuted ? 'text-red-500' : 'text-[#F2A900]'}`} />
+                            </div>
+                          )}
+                        </div>
+                        
+                        {!slot.isMuted && (
+                          <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
+                             <motion.div 
+                               animate={{ scale: [1, 1.2, 1] }} 
+                               transition={{ repeat: Infinity, duration: 1.5 }}
+                               className="w-14 h-14 rounded-full border-2 border-[#F2A900]/20"
+                             />
+                          </div>
+                        )}
+
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
+                          {isMe ? (
+                            <span className="text-[8px] font-black uppercase text-white bg-[#F2A900] px-1.5 py-0.5 rounded">TAP MUTE</span>
+                          ) : profile?.uid === activeRoom.hostId ? (
+                            <span className="text-[8px] font-black uppercase text-white bg-red-600 px-1.5 py-0.5 rounded">REMOVE</span>
+                          ) : null}
+                        </div>
+                        
+                        {slot.isMuted && (
+                          <div className="absolute top-1 right-1 bg-red-600 rounded-full p-1.5 border-2 border-black shadow-lg">
+                            <ICONS.MicOff className="w-2.5 h-2.5 text-white" />
+                          </div>
+                        )}
+                        {!slot.isMuted && (
+                          <div className="absolute top-1 right-1 bg-[#F2A900] rounded-full p-1.5 border-2 border-black shadow-lg">
+                            <ICONS.Mic className="w-2.5 h-2.5 text-black" />
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center">
+                        <ICONS.Plus className="w-5 h-5 text-gray-700 group-hover:text-[#F2A900] transition-colors" />
+                        <span className="text-[7px] font-bold text-gray-700 uppercase mt-1">TAKE MIC</span>
+                      </div>
+                    )}
+                  </motion.button>
+                  <span className={`text-[8px] font-black uppercase tracking-widest truncate w-full text-center transition-colors ${slot ? (isMe ? 'text-[#F2A900]' : 'text-white') : 'text-gray-500'}`}>
+                    {slot ? slot.userName : `VACANT ${i + 1}`}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -235,6 +334,64 @@ export const LiveRooms: React.FC = () => {
                 ))}
               </div>
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Room Settings Overlay */}
+        <AnimatePresence>
+          {showSettings && (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-6">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="w-full max-w-xs bg-[#1A1A1A] border-2 border-white/5 rounded-3xl p-6 shadow-2xl"
+              >
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-sm font-black text-white uppercase italic tracking-tighter">ROOM SETTINGS</h3>
+                  <button onClick={() => setShowSettings(false)} className="text-gray-500">
+                    <ICONS.Plus className="w-5 h-5 rotate-45" />
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  <div>
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3 block">MIC SLOT CAPACITY</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[2, 4, 6].map(num => (
+                        <button
+                          key={num}
+                          onClick={() => handleUpdateMicSlots(num)}
+                          className={`py-3 rounded-xl border-2 font-black text-xs transition-all ${
+                            activeRoom.maxMics === num 
+                              ? 'border-[#F2A900] bg-[#F2A900] text-black shadow-lg shadow-[#F2A900]/20' 
+                              : 'border-white/5 bg-black text-gray-500 hover:border-white/20'
+                          }`}
+                        >
+                          {num} MICS
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-white/5">
+                    <button 
+                      onClick={async () => {
+                        if (confirm("End and DELETE this live session globally?")) {
+                          await roomService.endRoom(activeRoom.id);
+                          setActiveRoom(null);
+                          setShowSettings(false);
+                        }
+                      }}
+                      className="w-full bg-red-600 text-white py-4 rounded-xl font-black text-[10px] uppercase shadow-lg shadow-red-600/20 hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <ICONS.Trash className="w-4 h-4" />
+                      TERMINATE LIVE SESSION
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
           )}
         </AnimatePresence>
 

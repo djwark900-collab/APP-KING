@@ -16,6 +16,7 @@ interface AuthContextType {
   forceSync: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   deleteAccount: () => Promise<void>;
+  resetQuota: () => void;
   frames: any[];
   skins: any[];
   rpRewards: any[];
@@ -34,6 +35,7 @@ const AuthContext = createContext<AuthContextType>({
   forceSync: async () => {},
   refreshProfile: async () => {},
   deleteAccount: async () => {},
+  resetQuota: () => {},
   frames: [],
   skins: [],
   rpRewards: [],
@@ -74,6 +76,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const handleQuotaError = () => {
     setQuotaExceeded(true);
     localStorage.setItem('quota_error_time', Date.now().toString());
+  };
+
+  const resetQuota = () => {
+    setQuotaExceeded(false);
+    localStorage.removeItem('quota_error_time');
+    // Force reload window to retry all listeners
+    window.location.reload();
   };
 
   const lastLeaderboardFetchRef = React.useRef<number>(0);
@@ -368,6 +377,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       forceSync,
       refreshProfile,
       deleteAccount,
+      resetQuota,
       frames,
       skins,
       rpRewards,

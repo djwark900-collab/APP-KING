@@ -16,7 +16,7 @@ export const Layout: React.FC = () => {
     const savedTab = localStorage.getItem('activeTab');
     return (savedTab as any) || 'home';
   });
-  const { profile, quotaExceeded } = useAuth();
+  const { profile, quotaExceeded, resetQuota } = useAuth();
   
   const isAdmin = profile?.email === 'traleague@gmail.com' || profile?.isAdmin;
 
@@ -53,8 +53,17 @@ export const Layout: React.FC = () => {
   return (
     <div className="flex flex-col h-[100dvh] bg-[#0F0F0F] text-white overflow-hidden max-w-md mx-auto shadow-2xl border-x border-[#222]">
       {quotaExceeded && (
-        <div className="bg-red-600 text-white text-[10px] font-black uppercase text-center p-2 animate-pulse z-[100]">
-          Daily Quota Exceeded. Data may not load or save until reset.
+        <div className="bg-gradient-to-r from-red-600 to-red-800 text-white text-[10px] font-black uppercase flex items-center justify-between px-4 py-3 z-[100] shadow-2xl border-b border-red-500/30">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-white rounded-full animate-ping" />
+            <span>Service Restricted: Connection or Quota Limit Hit</span>
+          </div>
+          <button 
+            onClick={resetQuota}
+            className="bg-white text-red-600 px-3 py-1.5 rounded-full text-[9px] font-black hover:bg-black hover:text-white transition-all shadow-lg active:scale-95"
+          >
+            RETRY
+          </button>
         </div>
       )}
       {/* Top Bar */}

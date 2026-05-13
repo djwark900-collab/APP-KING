@@ -15,8 +15,16 @@ import {
   arrayRemove,
   getDoc,
   getDocs,
-  where
+  where,
+  deleteField
 } from 'firebase/firestore';
+
+export interface MicSlot {
+  userId: string;
+  userName: string;
+  photoURL?: string;
+  isMuted: boolean;
+}
 
 export interface Room {
   id: string;
@@ -26,6 +34,8 @@ export interface Room {
   participants: string[];
   type: 'voice' | 'chat' | 'battle';
   status: 'live' | 'ended';
+  maxMics: number;
+  micSlots: { [slotIndex: string]: MicSlot };
   createdAt: any;
   updatedAt: any;
 }
@@ -45,16 +55,20 @@ export const roomService = {
     if (isQuotaExceeded()) return null;
     const user = auth.currentUser;
     if (!user) throw new Error("Authentication required");
+    const profileSnap = await getDoc(doc(db, 'users', user.uid));
+    const profile = profileSnap.data();
 
     const roomsRef = collection(db, 'rooms');
     try {
       const docRef = await addDoc(roomsRef, {
         name,
         hostId: user.uid,
-        hostName: user.displayName || 'Anonymous Player',
+        hostName: profile?.displayName || user.displayName || 'Anonymous Player',
         participants: [user.uid],
         type,
         status: 'live',
+        maxMics: 4,
+        micSlots: {},
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -62,6 +76,68 @@ export const roomService = {
       return docRef.id;
     } catch (e: any) {
       handleFirestoreError(e, OperationType.CREATE, 'rooms');
+    }
+  },
+
+  async updateRoomSettings(roomId: string, settings: Partial<Room>) {
+    if (isQuotaExceeded()) return;
+    const roomRef = doc(db, 'rooms', roomId);
+    try {
+      await updateDoc(roomRef, {
+        ...settings,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (e: any) {
+      handleFirestoreError(e, OperationType.UPDATE, `rooms/${roomId}`);
+    }
+  },
+
+  async takeMicSlot(roomId: string, slotIndex: number) {
+    if (isQuotaExceeded()) return;
+    const user = auth.currentUser;
+    if (!user) throw new Error("Authentication required");
+    const profileSnap = await getDoc(doc(db, 'users', user.uid));
+    const profile = profileSnap.data();
+
+    const roomRef = doc(db, 'rooms', roomId);
+    try {
+      await updateDoc(roomRef, {
+        [`micSlots.${slotIndex}`]: {
+          userId: user.uid,
+          userName: profile?.displayName || user.displayName || 'Anonymous',
+          photoURL: profile?.photoURL || user.photoURL || '',
+          isMuted: false
+        },
+        updatedAt: serverTimestamp(),
+      });
+    } catch (e: any) {
+      handleFirestoreError(e, OperationType.UPDATE, `rooms/${roomId}`);
+    }
+  },
+
+  async leaveMicSlot(roomId: string, slotIndex: number) {
+    if (isQuotaExceeded()) return;
+    const roomRef = doc(db, 'rooms', roomId);
+    try {
+      await updateDoc(roomRef, {
+        [`micSlots.${slotIndex}`]: deleteField(),
+        updatedAt: serverTimestamp(),
+      });
+    } catch (e: any) {
+      handleFirestoreError(e, OperationType.UPDATE, `rooms/${roomId}`);
+    }
+  },
+
+  async toggleMicMute(roomId: string, slotIndex: number, isMuted: boolean) {
+    if (isQuotaExceeded()) return;
+    const roomRef = doc(db, 'rooms', roomId);
+    try {
+      await updateDoc(roomRef, {
+        [`micSlots.${slotIndex}.isMuted`]: isMuted,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (e: any) {
+      handleFirestoreError(e, OperationType.UPDATE, `rooms/${roomId}`);
     }
   },
 
